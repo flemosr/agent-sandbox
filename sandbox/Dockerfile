@@ -20,6 +20,9 @@ RUN apt-get update && apt-get install -y \
     iproute2 \
     dnsutils \
     ca-certificates \
+    procps \
+    psmisc \
+    lsof \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user for safety
