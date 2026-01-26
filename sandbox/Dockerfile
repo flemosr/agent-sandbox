@@ -47,6 +47,10 @@ COPY init-firewall.sh /opt/init-firewall.sh
 COPY entrypoint.sh /opt/entrypoint.sh
 RUN chmod +x /opt/init-firewall.sh /opt/entrypoint.sh
 
+# Copy global context file for Claude Code
+COPY CLAUDE.md /home/claude/.claude/CLAUDE.md
+RUN chown claude:claude /home/claude/.claude/CLAUDE.md
+
 USER claude
 WORKDIR /home/claude/workspace
 
