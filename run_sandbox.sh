@@ -21,13 +21,16 @@ for arg in "$@"; do
   esac
 done
 
+mkdir -p "$(pwd)/.claude/sessions"
+
 project_name="${PWD##*/}"
+
 docker_args=(
   --rm -it
   -v "$(pwd):/workspaces/${project_name}"
   -w "/workspaces/${project_name}"
-  -v claude-sandbox-vol:/home/claude/host-vol
-  -e HISTFILE=/home/claude/host-vol/history/.bash_history
+  -v claude-sandbox:/home/claude/persist
+  -v "$(pwd)/.claude/sessions:/home/claude/persist/.claude/projects/-workspaces-${project_name}"
   -e TERM=xterm-256color
   --add-host=host.docker.internal:host-gateway
 )
