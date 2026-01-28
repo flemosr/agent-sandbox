@@ -26,7 +26,13 @@ RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
     python3-venv \
+    unzip \
+    strace \
     && rm -rf /var/lib/apt/lists/*
+
+# Install yq (YAML processor)
+RUN curl -fsSL https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o /usr/local/bin/yq \
+    && chmod +x /usr/local/bin/yq
 
 # Create a non-root user for safety
 RUN useradd -m -s /bin/bash claude \
