@@ -66,8 +66,8 @@ claude-sandbox --resume
 ## How it works
 
 - Your current directory is mounted at `/workspaces/<project-name>` inside the container
-- Each project gets a unique path so Claude Code keeps chat histories separate
-- Claude Code settings persist between sessions via a Docker volume (see below)
+- Session history is stored in the project's `.claude/sessions/` directory
+- Claude Code settings persist between sessions via a Docker volume
 - The container runs as non-root user `claude` for safety
 - Full network access is available (for web searches, docs, git, etc.)
 - Filesystem access is isolated to the mounted directory
@@ -76,42 +76,49 @@ claude-sandbox --resume
 
 ## Persistence
 
-All persistent data is stored in a single Docker volume `claude-sandbox-vol`, mounted at `/home/claude/host-vol` inside the container.
+### User data (Docker volume)
 
-### Volume structure
+User-level data (credentials, settings, plugins) is stored in a Docker volume `claude-sandbox`,
+mounted at `/home/claude/persist` inside the container.
 
 ```
-claude-sandbox-vol → /home/claude/host-vol/
+claude-sandbox → /home/claude/persist/
 ├── .claude/            # Claude Code configuration (~/.claude)
 │   ├── .credentials.json
 │   ├── settings.json
 │   ├── CLAUDE.md       # Global agent context
 │   └── ...
 ├── .claude.json        # Onboarding state, theme, user ID
-└── history/            # Bash history
-    └── .bash_history
 ```
-
-### Symlinks
 
 The Dockerfile creates symlinks so Claude Code finds its config in the expected locations:
 
-- `~/.claude` → `~/host-vol/.claude`
-- `~/.claude.json` → `~/host-vol/.claude.json`
+- `~/.claude` → `~/persist/.claude`
+- `~/.claude.json` → `~/persist/.claude.json`
 
-This ensures authentication, settings, and onboarding state persist across container restarts and image rebuilds.
+This ensures authentication, settings, and onboarding state persist across container restarts and
+image rebuilds.
+
+### Session data (per-project)
+
+Session data (conversation history, per-project state) is stored in the project directory at
+`.claude/sessions/`. This is bind-mounted into the container so sessions persist and are tied to the
+project, not the sandbox.
 
 ### Managing the volume
 
 ```bash
-# View volume contents
-docker run --rm -v claude-sandbox-vol:/data alpine ls -la /data
+# Access volume's contents
+docker run --rm -it -v claude-sandbox:/data -w /data alpine sh
 
 # Backup the volume
-docker run --rm -v claude-sandbox-vol:/data -v $(pwd):/backup alpine tar czf /backup/claude-sandbox-backup.tar.gz -C /data .
+docker run --rm -v claude-sandbox:/data -v $(pwd):/backup alpine tar -czf /backup/claude-sandbox-bkp.tgz -C /data .
 
-# Remove the volume (will require re-authentication)
-docker volume rm claude-sandbox-vol
+# Restore from backup
+docker run --rm -v claude-sandbox:/data -v $(pwd):/backup alpine tar -xzf /backup/claude-sandbox-bkp.tgz -C /data
+
+# Remove the volume
+docker volume rm claude-sandbox
 ```
 
 ## Network restrictions
@@ -123,7 +130,8 @@ Use the `--firewalled` flag to restrict network access to essential domains only
 - Rust (crates.io, docs.rs, rust-lang.org)
 - GitHub
 
-This prevents data exfiltration to unauthorized servers while still allowing Claude to fetch docs and install packages.
+This reduces the risk of data exfiltration to unauthorized servers while still allowing Claude to
+fetch docs and install packages.
 
 ## Project structure
 
