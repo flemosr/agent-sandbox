@@ -47,17 +47,17 @@ RUN curl -fsSL https://claude.ai/install.sh | bash
 ENV PATH="/home/claude/.cargo/bin:/home/claude/.local/bin:${PATH}"
 
 # Create persistent volume directory structure
-# All persistent data goes in host-vol which is mounted from a single Docker volume
-RUN mkdir -p /home/claude/host-vol/.claude /home/claude/host-vol/history
+# All persistent data goes in persist which is mounted from a single Docker volume
+RUN mkdir -p /home/claude/persist/.claude
 
 # Move installer-created files to volume location
-RUN mv /home/claude/.claude.json /home/claude/host-vol/.claude.json 2>/dev/null || true \
-    && mv /home/claude/.claude/* /home/claude/host-vol/.claude/ 2>/dev/null || true
+RUN mv /home/claude/.claude.json /home/claude/persist/.claude.json 2>/dev/null || true \
+    && mv /home/claude/.claude/* /home/claude/persist/.claude/ 2>/dev/null || true
 
 # Remove original directory and create symlinks to volume
 RUN rm -rf /home/claude/.claude \
-    && ln -sf /home/claude/host-vol/.claude /home/claude/.claude \
-    && ln -sf /home/claude/host-vol/.claude.json /home/claude/.claude.json
+    && ln -sf /home/claude/persist/.claude /home/claude/.claude \
+    && ln -sf /home/claude/persist/.claude.json /home/claude/.claude.json
 
 # Copy firewall and entrypoint scripts (after installs to preserve cache)
 USER root
@@ -70,8 +70,8 @@ COPY entrypoint.sh /opt/entrypoint.sh
 RUN chmod +x /opt/init-firewall.sh /opt/entrypoint.sh
 
 # Copy global context file for Claude Code
-COPY agent-context.md /home/claude/host-vol/.claude/CLAUDE.md
-RUN chown claude:claude /home/claude/host-vol/.claude/CLAUDE.md
+COPY agent-context.md /home/claude/persist/.claude/CLAUDE.md
+RUN chown claude:claude /home/claude/persist/.claude/CLAUDE.md
 
 USER claude
 WORKDIR /workspaces
