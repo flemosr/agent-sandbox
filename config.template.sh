@@ -1,18 +1,20 @@
 #!/bin/bash
-# Claude Sandbox Configuration
+# Claude Sandbox Configuration (for Chrome integration)
 #
+# This config is only needed if you want to use the Chrome integration.
 # Copy this file to config.sh and edit to match your setup:
 #
 #   cp config.template.sh config.sh
 #
 # Your config.sh is gitignored, so your personal settings won't be committed.
 #
-# We recommend creating a dedicated Chrome profile for Claude:
+# REQUIRED: Create a dedicated Chrome profile for Claude:
 #   1. Open Chrome and click your profile icon (top-right)
 #   2. Click "Add" to create a new profile named "Claude"
 #   3. Go to chrome://version in the new profile
 #   4. Look at "Profile Path" - the last folder name is your profile
 #      (e.g., "Profile 3")
+#   5. Set CHROME_PROFILE below to that folder name
 
 # Path to Chrome executable
 CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"

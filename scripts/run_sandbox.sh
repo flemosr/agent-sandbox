@@ -42,28 +42,10 @@ mkdir -p "$(pwd)/.claude/sessions"
 
 project_name="${PWD##*/}"
 
-# Source config.sh (required)
-if [ ! -f "$REPO_ROOT/config.sh" ]; then
-  echo "Error: No config file found in $REPO_ROOT"
-  echo ""
-  echo "Please create config.sh from the template:"
-  echo ""
-  echo "  cd $REPO_ROOT"
-  echo "  cp config.template.sh config.sh"
-  echo ""
-  echo "Then edit config.sh with your settings."
-  exit 1
+# Source config.sh if it exists (required for Chrome integration)
+if [ -f "$REPO_ROOT/config.sh" ]; then
+  source "$REPO_ROOT/config.sh"
 fi
-source "$REPO_ROOT/config.sh"
-
-if [ -z "$CHROME_LOG_FILE" ]; then
-  echo "Error: CHROME_LOG_FILE not set in $REPO_ROOT/config.sh"
-  exit 1
-fi
-
-# Chrome log path - always mounted so agent can access logs
-# even if Chrome is started later via start-chrome-debug.sh
-touch "$CHROME_LOG_FILE"
 
 # Cleanup function for Chrome process
 cleanup() {
@@ -77,14 +59,31 @@ trap cleanup EXIT
 
 # Start Chrome with remote debugging if enabled
 if $chrome_enabled; then
-  if [ ! -f "$SCRIPT_DIR/start-chrome-debug.sh" ]; then
-    echo "Error: start-chrome-debug.sh not found in $SCRIPT_DIR"
+  # Validate config.sh exists and has required Chrome settings
+  if [ ! -f "$REPO_ROOT/config.sh" ]; then
+    echo "Error: Chrome integration requires config.sh"
+    echo ""
+    echo "Please create config.sh from the template:"
+    echo ""
+    echo "  cd $REPO_ROOT"
+    echo "  cp config.template.sh config.sh"
+    echo ""
+    echo "Then edit config.sh with your Chrome profile (check chrome://version)."
     exit 1
   fi
 
-  # Validate Chrome-specific config (config.sh already sourced above)
   if [ -z "$CHROME_DEBUG_PORT" ]; then
     echo "Error: CHROME_DEBUG_PORT not set in $REPO_ROOT/config.sh"
+    exit 1
+  fi
+
+  if [ -z "$CHROME_LOG_FILE" ]; then
+    echo "Error: CHROME_LOG_FILE not set in $REPO_ROOT/config.sh"
+    exit 1
+  fi
+
+  if [ ! -f "$SCRIPT_DIR/start-chrome-debug.sh" ]; then
+    echo "Error: start-chrome-debug.sh not found in $SCRIPT_DIR"
     exit 1
   fi
 
@@ -134,10 +133,16 @@ docker_args=(
   -v "$(pwd)/.claude/sessions:/home/claude/persist/.claude/projects/-workspaces-${project_name}"
   -e TERM=xterm-256color
   --add-host=host.docker.internal:host-gateway
-  # Always mount Chrome log so agent can access it even if Chrome is started later
-  -e CHROME_LOG=/tmp/chrome-debug.log
-  -v "$CHROME_LOG_FILE:/tmp/chrome-debug.log:ro"
 )
+
+# Mount Chrome log if configured (allows agent to access logs even if Chrome started later)
+if [ -n "$CHROME_LOG_FILE" ]; then
+  touch "$CHROME_LOG_FILE"
+  docker_args+=(
+    -e CHROME_LOG=/tmp/chrome-debug.log
+    -v "$CHROME_LOG_FILE:/tmp/chrome-debug.log:ro"
+  )
+fi
 
 # Add port mappings if specified
 if [ ${#ports[@]} -gt 0 ]; then
