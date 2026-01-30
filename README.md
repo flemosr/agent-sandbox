@@ -160,15 +160,19 @@ claude-sandbox → /home/claude/persist/
 │   ├── CLAUDE.md       # Global agent context
 │   └── ...
 ├── .claude.json        # Onboarding state, theme, user ID
+├── .nvm/               # Node.js versions and global packages
+│   ├── versions/node/  # Installed Node.js versions
+│   └── ...
 ```
 
-The Dockerfile creates symlinks so Claude Code finds its config in the expected locations:
+The entrypoint creates symlinks so tools find their config in the expected locations:
 
 - `~/.claude` → `~/persist/.claude`
 - `~/.claude.json` → `~/persist/.claude.json`
+- `~/.nvm` → `~/persist/.nvm`
 
-This ensures authentication, settings, and onboarding state persist across container restarts and
-image rebuilds.
+This ensures authentication, settings, Node.js versions, and global npm packages persist across
+container restarts and image rebuilds.
 
 ### Session data (per-project)
 
@@ -279,7 +283,8 @@ The sandbox comes with the following pre-installed:
 
 | Category | Tools |
 |----------|-------|
-| **Languages** | Python 3.11, Rust (stable) |
+| **Languages** | Node.js LTS (via nvm), Python 3.11, Rust (stable) |
+| **Node.js** | `nvm` (version manager), `npm`, `npx` |
 | **Python** | `pyright` (type checker), `ruff` (linter), `playwright` |
 | **Browser** | `browser` CLI for Chrome automation |
 | **Utilities** | `git`, `curl`, `wget`, `jq`, `yq`, `ripgrep`, `fd` |
