@@ -231,9 +231,21 @@ class Browser:
         }
 
     async def scroll(self, x: int = 0, y: int = 0):
-        """Scroll the page."""
+        """Scroll the page to absolute position."""
         page = self._require_page()
         await page.evaluate(f"window.scrollTo({x}, {y})")
+
+    async def scroll_by(self, x: int = 0, y: int = 0):
+        """Scroll the page by relative amount."""
+        page = self._require_page()
+        await page.evaluate(f"window.scrollBy({x}, {y})")
+
+    async def scroll_into_view(self, selector: str):
+        """Scroll an element into view."""
+        page = self._require_page()
+        element = await page.wait_for_selector(selector, timeout=5000)
+        if element:
+            await element.scroll_into_view_if_needed()
 
     async def scroll_to_bottom(self):
         """Scroll to the bottom of the page."""
@@ -291,6 +303,21 @@ async def main():
     # test command
     subparsers.add_parser("test", help="Test connection to Chrome")
 
+    # wait command
+    wait_parser = subparsers.add_parser("wait", help="Wait for an element to appear")
+    wait_parser.add_argument("selector", help="CSS selector to wait for")
+    wait_parser.add_argument("--timeout", "-t", type=int, default=30000, help="Timeout in ms (default: 30000)")
+
+    # eval command
+    eval_parser = subparsers.add_parser("eval", help="Execute JavaScript in page context")
+    eval_parser.add_argument("js", help="JavaScript code to execute")
+    eval_parser.add_argument("--json", "-j", action="store_true", help="Output result as JSON")
+
+    # scroll command
+    scroll_parser = subparsers.add_parser("scroll", help="Scroll the page")
+    scroll_parser.add_argument("target", nargs="?", help="Pixels (number), CSS selector, or 'bottom'")
+    scroll_parser.add_argument("--by", action="store_true", help="Scroll by relative amount (with pixel value)")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -329,6 +356,40 @@ async def main():
             elif args.command == "info":
                 info = await browser.get_page_info()
                 print(json.dumps(info, indent=2))
+
+            elif args.command == "wait":
+                await browser.wait_for(args.selector, timeout=args.timeout)
+                print(f"Element found: {args.selector}")
+
+            elif args.command == "eval":
+                result = await browser.evaluate(args.js)
+                if args.json:
+                    print(json.dumps(result, indent=2, default=str))
+                else:
+                    print(result if result is not None else "")
+
+            elif args.command == "scroll":
+                target = args.target
+                if target is None:
+                    # No target: show current scroll position
+                    pos = await browser.evaluate("({x: window.scrollX, y: window.scrollY})")
+                    print(json.dumps(pos, indent=2))
+                elif target == "bottom":
+                    await browser.scroll_to_bottom()
+                    print("Scrolled to bottom")
+                elif target.lstrip("-").isdigit():
+                    # Numeric: scroll by pixels (positive = down, negative = up)
+                    pixels = int(target)
+                    if args.by:
+                        await browser.scroll_by(0, pixels)
+                        print(f"Scrolled by {pixels}px")
+                    else:
+                        await browser.scroll(0, pixels)
+                        print(f"Scrolled to y={pixels}px")
+                else:
+                    # Selector: scroll element into view
+                    await browser.scroll_into_view(target)
+                    print(f"Scrolled to: {target}")
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)

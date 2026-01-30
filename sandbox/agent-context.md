@@ -44,6 +44,9 @@ browser click <selector>        # Click element by CSS selector
 browser fill <selector> <text>  # Fill form field
 browser console                 # Get console logs (errors, warnings, etc.)
 browser info                    # Get current page URL and title
+browser wait <selector>         # Wait for element to appear (--timeout <ms>)
+browser eval <js>               # Execute JavaScript (--json for JSON output)
+browser scroll [target]         # Scroll: pixels, selector, or 'bottom' (--by for relative)
 ```
 
 ### Python API
