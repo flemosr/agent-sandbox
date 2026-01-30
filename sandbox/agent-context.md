@@ -6,6 +6,19 @@ You are running inside a Docker container sandbox. Keep the following in mind:
 
 Use `host.docker.internal` instead of `localhost` to connect to services running on the host machine.
 
+## Persistence
+
+Two types of data persist between sessions:
+
+1. **Workspace** (bind mount): Your project directory is mounted from the host. All file changes persist automatically.
+
+2. **User data** (Docker volume): Stored in `~/persist/` and symlinked to expected locations:
+   - `~/.claude/` - Claude Code config, credentials, settings
+   - `~/.claude.json` - Onboarding state
+   - `~/.nvm/` - Node.js versions and global npm packages
+
+This means installed Node versions (`nvm install 20`) and global packages (`npm i -g typescript`) persist across container restarts.
+
 ## Exposed Ports
 
 To check which ports are exposed to the host:
@@ -69,10 +82,19 @@ When building web apps, use Chrome to visually verify your work:
    echo "$EXPOSED_PORTS"  # Must include your dev server port (e.g., "3000")
    ```
 
-2. **Start your dev server** (ensure it binds to `0.0.0.0`, not just `localhost`):
+2. **Start your dev server** - it **must** bind to `0.0.0.0` (not `localhost` or `127.0.0.1`):
    ```bash
+   # Vite
    npm run dev -- --host 0.0.0.0 --port 3000
+
+   # Next.js
+   npm run dev -- -H 0.0.0.0 -p 3000
+
+   # Create React App
+   HOST=0.0.0.0 PORT=3000 npm start
    ```
+
+   Without `--host 0.0.0.0`, the server only listens on localhost inside the container and Chrome (on the host) cannot connect.
 
 3. **Navigate Chrome to your app** (Chrome is on the host, so use `localhost`):
    ```bash
@@ -158,3 +180,29 @@ The following tools are pre-installed:
 | **Python** | `pyright` (type checker), `ruff` (linter), `playwright` |
 | **Browser** | `browser` CLI for Chrome automation (use `browser test` to check availability) |
 | **Utilities** | `git`, `curl`, `wget`, `jq`, `yq`, `ripgrep`, `fd` |
+
+## Project Scaffolding
+
+Interactive CLI prompts (like `npm create vite@latest`) don't work in this environment. Use non-interactive flags instead:
+
+```bash
+# Vite (React + TypeScript)
+npm create vite@latest my-app -- --template react-ts
+
+# Vite (Vue)
+npm create vite@latest my-app -- --template vue-ts
+
+# Vite (Svelte)
+npm create vite@latest my-app -- --template svelte-ts
+
+# Next.js
+npx create-next-app@latest my-app --typescript --eslint --app --src-dir --no-tailwind --import-alias "@/*"
+
+# Create React App
+npx create-react-app my-app --template typescript
+
+# Express (manual setup - no scaffolding tool)
+mkdir my-app && cd my-app && npm init -y && npm install express
+```
+
+The `--` before template flags is required for npm create commands to pass arguments to the scaffolding tool.

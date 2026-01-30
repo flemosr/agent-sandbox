@@ -272,10 +272,13 @@ claude-sandbox --with-chrome --port 3000
 The `$EXPOSED_PORTS` env var contains the list of exposed ports (e.g., `3000,5173`).
 
 **Complete flow for web development:**
+
+*User (on host):*
 1. Start sandbox with port: `claude-sandbox --with-chrome --port 3000`
-2. Start dev server in container: `npm run dev` (runs on port 3000)
-3. Access from host browser: `http://localhost:3000`
-4. Or use `browser` CLI: `browser goto "http://host.docker.internal:3000"`
+
+*Agent (in container):*
+2. Start dev server: `npm run dev -- --host 0.0.0.0` (must bind to 0.0.0.0)
+3. Navigate Chrome: `browser goto "http://localhost:3000"` (Chrome is on host)
 
 ## Available Tools
 
