@@ -42,6 +42,15 @@ if [ -d /home/claude/.local/share/claude ] && [ ! -L /home/claude/.local/share/c
 fi
 ln -sfn /home/claude/persist/.claude-versions /home/claude/.local/share/claude
 
+# Update claude binary symlink to point to the persisted version
+# (handles image rebuild where baked-in version differs from persisted version)
+if [ -d /home/claude/.local/share/claude/versions ]; then
+  latest_claude=$(ls -1 /home/claude/.local/share/claude/versions | sort -V | tail -1)
+  if [ -n "$latest_claude" ]; then
+    ln -sfn "/home/claude/.local/share/claude/versions/$latest_claude" /home/claude/.local/bin/claude
+  fi
+fi
+
 # If ENABLE_FIREWALL is set, configure network restrictions (requires root)
 if [[ "$ENABLE_FIREWALL" == "1" ]]; then
   if [[ "$(id -u)" != "0" ]]; then
