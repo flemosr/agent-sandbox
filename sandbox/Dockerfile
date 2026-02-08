@@ -87,10 +87,16 @@ RUN rm -rf /home/claude/.claude \
     && ln -sf /home/claude/persist/.claude /home/claude/.claude \
     && ln -sf /home/claude/persist/.claude.json /home/claude/.claude.json
 
-# Backup nvm to template location for volume initialization
+# Set up persistence for Claude Code binary versions (~/.local/share/claude)
+# This prevents re-downloading Claude Code updates on every container restart
+RUN mv /home/claude/.local/share/claude /home/claude/persist/.claude-versions 2>/dev/null || true \
+    && ln -sf /home/claude/persist/.claude-versions /home/claude/.local/share/claude
+
+# Backup nvm and Claude Code to template location for volume initialization
 # This allows the entrypoint to seed the persistent volume on first run
 USER root
-RUN cp -a /home/claude/.nvm /opt/nvm-template
+RUN cp -a /home/claude/.nvm /opt/nvm-template \
+    && cp -a /home/claude/persist/.claude-versions /opt/claude-versions-template
 USER claude
 
 # Copy firewall and entrypoint scripts (after installs to preserve cache)

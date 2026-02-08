@@ -27,6 +27,21 @@ if [ -d /home/claude/.nvm/versions/node ]; then
   fi
 fi
 
+# Initialize Claude Code versions in persistent volume if empty (first run)
+# This prevents re-downloading Claude Code updates on every container restart
+if [ ! -d /home/claude/persist/.claude-versions/versions ]; then
+  echo "Initializing Claude Code versions in persistent volume..."
+  cp -a /opt/claude-versions-template /home/claude/persist/.claude-versions
+  chown -R claude:claude /home/claude/persist/.claude-versions
+fi
+
+# Ensure Claude Code versions symlink exists (handles both first run and image updates)
+mkdir -p /home/claude/.local/share
+if [ -d /home/claude/.local/share/claude ] && [ ! -L /home/claude/.local/share/claude ]; then
+  rm -rf /home/claude/.local/share/claude
+fi
+ln -sfn /home/claude/persist/.claude-versions /home/claude/.local/share/claude
+
 # If ENABLE_FIREWALL is set, configure network restrictions (requires root)
 if [[ "$ENABLE_FIREWALL" == "1" ]]; then
   if [[ "$(id -u)" != "0" ]]; then
