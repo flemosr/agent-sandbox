@@ -160,6 +160,8 @@ claude-sandbox → /home/claude/persist/
 │   ├── CLAUDE.md       # Global agent context
 │   └── ...
 ├── .claude.json        # Onboarding state, theme, user ID
+├── .claude-versions/   # Claude Code binary versions
+│   └── versions/       # Downloaded Claude Code updates
 ├── .nvm/               # Node.js versions and global packages
 │   ├── versions/node/  # Installed Node.js versions
 │   └── ...
@@ -169,10 +171,11 @@ The entrypoint creates symlinks so tools find their config in the expected locat
 
 - `~/.claude` → `~/persist/.claude`
 - `~/.claude.json` → `~/persist/.claude.json`
+- `~/.local/share/claude` → `~/persist/.claude-versions`
 - `~/.nvm` → `~/persist/.nvm`
 
-This ensures authentication, settings, Node.js versions, and global npm packages persist across
-container restarts and image rebuilds.
+This ensures authentication, settings, Claude Code binary versions, Node.js versions, and global npm
+packages persist across container restarts and image rebuilds.
 
 ### Session data (per-project)
 
