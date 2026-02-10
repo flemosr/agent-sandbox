@@ -14,6 +14,15 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Ensure common Docker CLI locations are on PATH.
+# IDE task runners (e.g. Zed, VS Code) may launch with a minimal environment
+# that doesn't include the directories where Docker Desktop installs its CLI.
+for p in /usr/local/bin /opt/homebrew/bin "$HOME/.docker/bin"; do
+    if [[ -d "$p" ]] && [[ ":$PATH:" != *":$p:"* ]]; then
+        export PATH="$p:$PATH"
+    fi
+done
+
 show_help() {
     cat << 'EOF'
 Claude Code Sandbox - Run Claude Code safely in Docker
