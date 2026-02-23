@@ -163,6 +163,9 @@ claude-sandbox start-chrome --port 9333 --profile "Profile 1"
 ### Manage GPG keys
 
 ```bash
+# Generate a new key (reads identity from config.sh)
+claude-sandbox gpg-new
+
 # Export the sandbox GPG key
 claude-sandbox gpg-export --file my-key-backup.asc
 
