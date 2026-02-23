@@ -28,6 +28,7 @@ RUN apt-get update && apt-get install -y \
     python3-venv \
     unzip \
     strace \
+    gnupg \
     && rm -rf /var/lib/apt/lists/*
 
 # Install yq (YAML processor) - detect architecture

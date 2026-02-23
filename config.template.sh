@@ -28,6 +28,14 @@ CHROME_DEBUG_DATA="$HOME/Library/Application Support/Google/Chrome-Debug"
 # Chrome profile directory name (create a dedicated "Claude" profile)
 CHROME_PROFILE="CHANGE_ME"
 
+# Git identity (used inside the sandbox for commits)
+# GIT_AUTHOR_NAME="Sandbox Agent Name"
+# GIT_AUTHOR_EMAIL="agent@example.local"
+
+# Enable GPG commit signing (generates a sandbox-specific key on first run)
+# Requires GIT_AUTHOR_NAME and GIT_AUTHOR_EMAIL to be set
+# GPG_SIGNING=true
+
 # External port for CDP (accessible from Docker via host.docker.internal)
 CHROME_DEBUG_PORT=9222
 

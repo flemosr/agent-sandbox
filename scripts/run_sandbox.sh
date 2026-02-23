@@ -134,6 +134,17 @@ docker_args=(
   --add-host=host.docker.internal:host-gateway
 )
 
+# Pass git identity env vars if configured
+if [ -n "$GIT_AUTHOR_NAME" ]; then
+  docker_args+=(-e "GIT_AUTHOR_NAME=$GIT_AUTHOR_NAME")
+fi
+if [ -n "$GIT_AUTHOR_EMAIL" ]; then
+  docker_args+=(-e "GIT_AUTHOR_EMAIL=$GIT_AUTHOR_EMAIL")
+fi
+if [ "$GPG_SIGNING" = "true" ]; then
+  docker_args+=(-e "GPG_SIGNING=true")
+fi
+
 # Mount Chrome log if configured (allows agent to access logs even if Chrome started later)
 if [ -n "$CHROME_LOG_FILE" ]; then
   touch "$CHROME_LOG_FILE"
