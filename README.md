@@ -5,7 +5,7 @@ selective persistence, and isolated GPG-signed commits.
 
 ## Prerequisites
 
-- Docker installed and running
+- Docker installed
 - macOS (or Linux/WSL2)
 
 ## Setup
@@ -235,17 +235,17 @@ project, not the sandbox.
 ### Managing the volume
 
 ```bash
-# Access volume's contents
-docker run --rm -it -v claude-sandbox:/data -w /data alpine sh
+# Open a shell in the volume
+claude-sandbox volume-shell
 
 # Backup the volume
-docker run --rm -v claude-sandbox:/data -v $(pwd):/backup alpine tar -czf /backup/claude-sandbox-bkp.tgz -C /data .
+claude-sandbox volume-backup --file claude-sandbox-bkp.tgz
 
 # Restore from backup
-docker run --rm -v claude-sandbox:/data -v $(pwd):/backup alpine tar -xzf /backup/claude-sandbox-bkp.tgz -C /data
+claude-sandbox volume-restore --file claude-sandbox-bkp.tgz
 
 # Remove the volume
-docker volume rm claude-sandbox
+claude-sandbox volume-rm
 ```
 
 ## Browser Integration (Web Development)
