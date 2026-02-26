@@ -9,6 +9,10 @@
 #   claude-sandbox gpg-import --file <f>   Import a GPG key into the sandbox
 #   claude-sandbox gpg-revoke --file <f>   Generate a revocation certificate
 #   claude-sandbox gpg-erase               Erase the sandbox GPG key
+#   claude-sandbox volume-shell             Open a shell in the sandbox volume
+#   claude-sandbox volume-backup --file <f> Backup the sandbox volume
+#   claude-sandbox volume-restore --file <f> Restore the sandbox volume from backup
+#   claude-sandbox volume-rm               Remove the sandbox volume
 #   claude-sandbox settings                Open sandbox settings.json in vi
 #   claude-sandbox help                    Show this help message
 #
@@ -44,6 +48,10 @@ Commands:
   gpg-import      Import a GPG key into the sandbox
   gpg-revoke      Generate a revocation certificate
   gpg-erase       Erase the sandbox GPG key
+  volume-shell    Open a shell in the sandbox volume
+  volume-backup   Backup the sandbox volume to a file
+  volume-restore  Restore the sandbox volume from a backup
+  volume-rm       Remove the sandbox volume
   settings        Open sandbox settings.json in vi
   help            Show this help message
 
@@ -57,6 +65,10 @@ Examples:
   claude-sandbox gpg-import --file my-key.asc
   claude-sandbox gpg-revoke --file revoke.asc
   claude-sandbox gpg-erase
+  claude-sandbox volume-shell
+  claude-sandbox volume-backup --file backup.tgz
+  claude-sandbox volume-restore --file backup.tgz
+  claude-sandbox volume-rm
   claude-sandbox settings
 
 For more information, see README.md
@@ -417,6 +429,140 @@ GPGEOF
                 ensure_docker_running
                 docker run --rm --entrypoint bash -v claude-sandbox:/data local/claude-sandbox \
                     -c 'rm -rf /data/.gnupg/* && echo "GPG keys erased."'
+                ;;
+            *)
+                echo "Aborted."
+                ;;
+        esac
+        ;;
+
+    volume-shell)
+        shift
+        if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+            echo "Open a shell in the sandbox volume"
+            echo ""
+            echo "Usage:"
+            echo "  claude-sandbox volume-shell"
+            echo ""
+            echo "Opens an interactive shell in the sandbox Docker volume"
+            echo "for inspecting or modifying its contents."
+            exit 0
+        fi
+
+        ensure_docker_running
+        docker run --rm -it -v claude-sandbox:/data -w /data alpine sh
+        ;;
+
+    volume-backup)
+        shift
+        outfile=""
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --file) outfile="$2"; shift 2 ;;
+                --help|-h)
+                    echo "Backup the sandbox volume to a file"
+                    echo ""
+                    echo "Usage:"
+                    echo "  claude-sandbox volume-backup --file <path>"
+                    echo ""
+                    echo "Options:"
+                    echo "  --file <path>   Output file (required, .tgz)"
+                    exit 0
+                    ;;
+                *) echo "Unknown option: $1"; exit 1 ;;
+            esac
+        done
+
+        if [ -z "$outfile" ]; then
+            echo "Error: --file is required"
+            echo "Usage: claude-sandbox volume-backup --file <path>"
+            exit 1
+        fi
+
+        ensure_docker_running
+
+        outdir="$(cd "$(dirname "$outfile")" && pwd)"
+        outname="$(basename "$outfile")"
+
+        docker run --rm -v claude-sandbox:/data -v "$outdir:/backup" alpine \
+            tar -czf "/backup/$outname" -C /data .
+
+        echo "Volume backed up to: $outfile"
+        ;;
+
+    volume-restore)
+        shift
+        infile=""
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --file) infile="$2"; shift 2 ;;
+                --help|-h)
+                    echo "Restore the sandbox volume from a backup"
+                    echo ""
+                    echo "Usage:"
+                    echo "  claude-sandbox volume-restore --file <path>"
+                    echo ""
+                    echo "Options:"
+                    echo "  --file <path>   Backup file to restore (required, .tgz)"
+                    echo ""
+                    echo "WARNING: This replaces all current volume contents."
+                    exit 0
+                    ;;
+                *) echo "Unknown option: $1"; exit 1 ;;
+            esac
+        done
+
+        if [ -z "$infile" ]; then
+            echo "Error: --file is required"
+            echo "Usage: claude-sandbox volume-restore --file <path>"
+            exit 1
+        fi
+
+        if [ ! -f "$infile" ]; then
+            echo "Error: File not found: $infile"
+            exit 1
+        fi
+
+        read -r -p "This will replace all contents of the sandbox volume. Continue? [y/N] " confirm
+        case "$confirm" in
+            y|Y) ;;
+            *)
+                echo "Aborted."
+                exit 0
+                ;;
+        esac
+
+        ensure_docker_running
+
+        indir="$(cd "$(dirname "$infile")" && pwd)"
+        inname="$(basename "$infile")"
+
+        docker run --rm -v claude-sandbox:/data -v "$indir:/backup" alpine \
+            sh -c "rm -rf /data/* /data/.[!.]* /data/..?* 2>/dev/null; tar -xzf /backup/$inname -C /data"
+
+        echo "Volume restored from: $infile"
+        ;;
+
+    volume-rm)
+        shift
+        if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+            echo "Remove the sandbox volume"
+            echo ""
+            echo "Usage:"
+            echo "  claude-sandbox volume-rm"
+            echo ""
+            echo "Permanently deletes the sandbox Docker volume and all its data"
+            echo "(credentials, settings, GPG keys, installed tools, etc.)."
+            echo "A fresh volume will be created on the next launch."
+            exit 0
+        fi
+
+        read -r -p "This will permanently delete all sandbox data (credentials, settings, GPG keys, etc.). Continue? [y/N] " confirm
+        case "$confirm" in
+            y|Y)
+                ensure_docker_running
+                docker volume rm claude-sandbox
+                echo "Volume 'claude-sandbox' removed."
                 ;;
             *)
                 echo "Aborted."
