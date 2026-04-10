@@ -176,6 +176,9 @@ if [[ "$ENABLE_FIREWALL" == "1" ]]; then
   /opt/init-firewall.sh
 fi
 
+# Blank line to separate init logs from the Claude Code TUI
+echo
+
 # Run claude as the claude user in the current working directory
 if [[ "$(id -u)" == "0" ]]; then
   # Build argument string for passing through bash -c
