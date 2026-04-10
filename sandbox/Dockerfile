@@ -93,10 +93,12 @@ RUN rm -rf /home/claude/.claude \
 RUN mv /home/claude/.local/share/claude /home/claude/persist/.claude-versions 2>/dev/null || true \
     && ln -sf /home/claude/persist/.claude-versions /home/claude/.local/share/claude
 
-# Backup nvm and Claude Code to template location for volume initialization
+# Backup nvm, Rust, and Claude Code to template location for volume initialization
 # This allows the entrypoint to seed the persistent volume on first run
 USER root
 RUN cp -a /home/claude/.nvm /opt/nvm-template \
+    && cp -a /home/claude/.rustup /opt/rustup-template \
+    && cp -a /home/claude/.cargo /opt/cargo-template \
     && cp -a /home/claude/persist/.claude-versions /opt/claude-versions-template
 USER claude
 

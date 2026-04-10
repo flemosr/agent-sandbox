@@ -27,6 +27,26 @@ if [ -d /home/claude/.nvm/versions/node ]; then
   fi
 fi
 
+# Initialize Rust toolchain in persistent volume if empty (first run)
+if [ ! -d /home/claude/persist/.rustup/toolchains ]; then
+  echo "Initializing Rust toolchain in persistent volume..."
+  cp -a /opt/rustup-template /home/claude/persist/.rustup
+  cp -a /opt/cargo-template /home/claude/persist/.cargo
+  chown -R claude:claude /home/claude/persist/.rustup /home/claude/persist/.cargo
+fi
+
+# Ensure rustup symlink exists (handles both first run and image updates)
+if [ -d /home/claude/.rustup ] && [ ! -L /home/claude/.rustup ]; then
+  rm -rf /home/claude/.rustup
+fi
+ln -sfn /home/claude/persist/.rustup /home/claude/.rustup
+
+# Ensure cargo symlink exists
+if [ -d /home/claude/.cargo ] && [ ! -L /home/claude/.cargo ]; then
+  rm -rf /home/claude/.cargo
+fi
+ln -sfn /home/claude/persist/.cargo /home/claude/.cargo
+
 # Initialize Claude Code versions in persistent volume if empty (first run)
 # This prevents re-downloading Claude Code updates on every container restart
 if [ ! -d /home/claude/persist/.claude-versions/versions ]; then
