@@ -1,4 +1,4 @@
-# Claude Code Sandbox
+# Agent Sandbox
 
 An opinionated, containerized environment for running Claude Code in YOLO mode, with Chrome
 integration, selective persistence, and isolated GPG-signed commits.
@@ -24,10 +24,10 @@ docker compose build
 Add this to your `~/.zshrc`:
 
 ```bash
-alias claude-sandbox="/path/to/claude-sandbox/cli.sh"
+alias agent-sandbox="/path/to/agent-sandbox/cli.sh"
 ```
 
-Replace `/path/to/claude-sandbox` with the actual path to this repository.
+Replace `/path/to/agent-sandbox` with the actual path to this repository.
 
 Then reload your shell:
 
@@ -40,7 +40,7 @@ source ~/.zshrc
 Run the sandbox once to authenticate with your Anthropic account:
 
 ```bash
-claude-sandbox run
+agent-sandbox run
 ```
 
 ### 4. Configure Chrome (optional)
@@ -103,40 +103,40 @@ Navigate to any project directory and run:
 
 ```bash
 # Normal mode
-claude-sandbox run
+agent-sandbox run
 
 # YOLO mode (no permission prompts)
-claude-sandbox run --yolo
+agent-sandbox run --yolo
 
 # Firewalled mode (restricted network access)
-claude-sandbox run --firewalled
+agent-sandbox run --firewalled
 
 # Chrome enabled (browser control)
-claude-sandbox run --with-chrome
+agent-sandbox run --with-chrome
 
 # Expose a port for dev server (accessible at localhost:3000 on host)
-claude-sandbox run --port 3000
+agent-sandbox run --port 3000
 
 # Multiple ports
-claude-sandbox run --port 3000 --port 5173
+agent-sandbox run --port 3000 --port 5173
 
 # Web dev setup: YOLO + Chrome + port exposed
-claude-sandbox run --yolo --with-chrome --port 3000
+agent-sandbox run --yolo --with-chrome --port 3000
 
 # YOLO + firewalled
-claude-sandbox run --yolo --firewalled
+agent-sandbox run --yolo --firewalled
 
 # With a prompt
-claude-sandbox run --yolo -p "fix the tests"
+agent-sandbox run --yolo -p "fix the tests"
 
 # Pass any claude arguments
-claude-sandbox run --resume
+agent-sandbox run --resume
 ```
 
-**Shorthand:** Running `claude-sandbox` without a command defaults to `run`:
+**Shorthand:** Running `agent-sandbox` without a command defaults to `run`:
 
 ```bash
-claude-sandbox --yolo --with-chrome --port 3000
+agent-sandbox --yolo --with-chrome --port 3000
 ```
 
 ### Start Chrome separately
@@ -145,32 +145,32 @@ If you want to start Chrome independently (e.g., to keep it running across sandb
 
 ```bash
 # Start Chrome with remote debugging
-claude-sandbox start-chrome
+agent-sandbox start-chrome
 
 # Auto-restart if Chrome is running
-claude-sandbox start-chrome --restart
+agent-sandbox start-chrome --restart
 
 # Override settings from config
-claude-sandbox start-chrome --port 9333 --profile "Profile 1"
+agent-sandbox start-chrome --port 9333 --profile "Profile 1"
 ```
 
 ### Manage GPG keys
 
 ```bash
 # Generate a new key (reads identity from config.sh)
-claude-sandbox gpg-new
+agent-sandbox gpg-new
 
 # Export the sandbox GPG key
-claude-sandbox gpg-export --file my-key-backup.asc
+agent-sandbox gpg-export --file my-key-backup.asc
 
 # Import a previously exported key
-claude-sandbox gpg-import --file my-key-backup.asc
+agent-sandbox gpg-import --file my-key-backup.asc
 
 # Generate a revocation certificate
-claude-sandbox gpg-revoke --file revoke.asc
+agent-sandbox gpg-revoke --file revoke.asc
 
 # Erase all GPG keys from the sandbox
-claude-sandbox gpg-erase
+agent-sandbox gpg-erase
 ```
 
 ### Edit sandbox settings
@@ -178,7 +178,7 @@ claude-sandbox gpg-erase
 Open the sandbox's `~/.claude/settings.json` in `vi`:
 
 ```bash
-claude-sandbox settings
+agent-sandbox settings
 ```
 
 This edits the Claude Code configuration stored in the Docker volume (persists across container
@@ -202,11 +202,11 @@ restarts).
 
 ### User data (Docker volume)
 
-User-level data (credentials, settings, plugins) is stored in a Docker volume `claude-sandbox`,
+User-level data (credentials, settings, plugins) is stored in a Docker volume `agent-sandbox`,
 mounted at `/home/claude/persist` inside the container.
 
 ```
-claude-sandbox → /home/claude/persist/
+agent-sandbox → /home/claude/persist/
 ├── .claude/            # Claude Code configuration (~/.claude)
 │   ├── .credentials.json
 │   ├── settings.json
@@ -246,16 +246,16 @@ project, not the sandbox.
 
 ```bash
 # Open a shell in the volume
-claude-sandbox volume-shell
+agent-sandbox volume-shell
 
 # Backup the volume
-claude-sandbox volume-backup --file claude-sandbox-bkp.tgz
+agent-sandbox volume-backup --file agent-sandbox-bkp.tgz
 
 # Restore from backup
-claude-sandbox volume-restore --file claude-sandbox-bkp.tgz
+agent-sandbox volume-restore --file agent-sandbox-bkp.tgz
 
 # Remove the volume
-claude-sandbox volume-rm
+agent-sandbox volume-rm
 ```
 
 ## Browser Integration (Web Development)
@@ -276,7 +276,7 @@ brew install socat
 Simply use the `--with-chrome` flag:
 
 ```bash
-claude-sandbox --with-chrome
+agent-sandbox --with-chrome
 ```
 
 This automatically:
@@ -311,7 +311,7 @@ Docker containers can't reach the host's localhost directly, we use `socat` as a
 Dev servers running in the container are exposed via the `--port` flag:
 
 ```bash
-claude-sandbox --with-chrome --port 3000
+agent-sandbox --with-chrome --port 3000
 ```
 
 ```
@@ -336,7 +336,7 @@ The `$EXPOSED_PORTS` env var contains the list of exposed ports (e.g., `3000,517
 **Complete flow for web development:**
 
 *User (on host):*
-1. Start sandbox with port: `claude-sandbox --with-chrome --port 3000`
+1. Start sandbox with port: `agent-sandbox --with-chrome --port 3000`
 
 *Agent (in container):*  
 2. Start dev server: `npm run dev -- --host 0.0.0.0` (must bind to 0.0.0.0)  
@@ -370,7 +370,7 @@ fetch docs and install packages.
 ## Project structure
 
 ```
-claude-sandbox/
+agent-sandbox/
 ├── README.md
 ├── docker-compose.yml
 ├── cli.sh                      # Main CLI entrypoint
