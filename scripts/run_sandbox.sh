@@ -86,7 +86,9 @@ case "$agent_cli" in
       -v "${session_host_dir}:/home/claude/persist/.claude/projects/-workspaces-${project_name}"
     )
     ;;
-  opencode) ;;
+  opencode)
+    mkdir -p "${workspace_sandbox_dir}/opencode-sessions"
+    ;;
 esac
 
 container_name="agent-sandbox-$$"

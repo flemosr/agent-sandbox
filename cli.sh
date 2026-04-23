@@ -15,6 +15,7 @@
 #   agent-sandbox volume-restore --file <f> Restore the sandbox volume from backup
 #   agent-sandbox volume-rm               Remove the sandbox volume
 #   agent-sandbox settings <agent>        Open an agent's settings/config in vi
+#   agent-sandbox opencode-sessions-export Export opencode sessions for current workspace
 #   agent-sandbox help                    Show this help message
 #
 # For detailed help on each command:
@@ -55,6 +56,8 @@ Commands:
   volume-restore  Restore the sandbox volume from a backup
   volume-rm       Remove the sandbox volume
   settings <agent>   Open an agent's settings/config in vi
+  opencode-sessions-export  Export opencode sessions for current workspace
+                            to .agent-sandbox/opencode-sessions/
   help            Show this help message
 
 Examples:
@@ -74,6 +77,7 @@ Examples:
   agent-sandbox volume-rm
   agent-sandbox settings claude
   agent-sandbox settings opencode
+  agent-sandbox opencode-sessions-export
 
 For more information, see README.md
 EOF
@@ -639,6 +643,57 @@ EOF
                 exit 1
                 ;;
         esac
+        ;;
+
+    opencode-sessions-export)
+        shift
+        if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+            echo "Export opencode sessions for the current workspace to a local backup"
+            echo ""
+            echo "Usage:"
+            echo "  agent-sandbox opencode-sessions-export"
+            echo ""
+            echo "Writes one JSON file per session (keyed by session ID) to"
+            echo ".agent-sandbox/opencode-sessions/ in the current workspace."
+            echo ""
+            echo "Sessions are auto-scoped to the current workspace: opencode derives"
+            echo "the project ID from the git root-commit SHA, or uses \"global\" for"
+            echo "non-git directories. Existing files are overwritten; stale files from"
+            echo "sessions deleted in opencode are left in place as recovery artifacts."
+            exit 0
+        fi
+
+        ensure_docker_running
+
+        project_name="${PWD##*/}"
+        output_dir="$(pwd)/.agent-sandbox/opencode-sessions"
+        mkdir -p "$output_dir"
+
+        # Use --user claude to write as uid 1000 (matches volume ownership).
+        # Bypasses the entrypoint — image-time symlinks already point the
+        # opencode data dirs at /home/claude/persist, so mounting the volume
+        # is enough for opencode to see this workspace's sessions.
+        docker run --rm --entrypoint sh \
+            --user claude \
+            -e HOME=/home/claude \
+            -v agent-sandbox:/home/claude/persist \
+            -v "$(pwd):/workspaces/${project_name}" \
+            -w "/workspaces/${project_name}" \
+            local/agent-sandbox -c '
+                set -e
+                export PATH="/home/claude/.local/bin:$PATH"
+                ids=$(opencode session list --format json 2>/dev/null | jq -r ".[].id")
+                if [ -z "$ids" ]; then
+                    echo "No opencode sessions found for this workspace."
+                    exit 0
+                fi
+                count=0
+                for id in $ids; do
+                    opencode export "$id" > ".agent-sandbox/opencode-sessions/$id.json"
+                    count=$((count + 1))
+                done
+                echo "Exported $count session(s) to .agent-sandbox/opencode-sessions/"
+            '
         ;;
 
     help|--help|-h)
