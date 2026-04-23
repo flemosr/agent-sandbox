@@ -83,7 +83,7 @@ case "$agent_cli" in
     fi
     mkdir -p "$session_host_dir"
     session_mount_args=(
-      -v "${session_host_dir}:/home/claude/persist/.claude/projects/-workspaces-${project_name}"
+      -v "${session_host_dir}:/home/agent/persist/.claude/projects/-workspaces-${project_name}"
     )
     ;;
   opencode)
@@ -178,7 +178,7 @@ docker_args=(
   --name "$container_name"
   -v "$(pwd):/workspaces/${project_name}"
   -w "/workspaces/${project_name}"
-  -v agent-sandbox:/home/claude/persist
+  -v agent-sandbox:/home/agent/persist
   -e TERM=xterm-256color
   -e "AGENT_CLI=${agent_cli}"
   --add-host=host.docker.internal:host-gateway

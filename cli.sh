@@ -616,16 +616,16 @@ GPGEOF
             claude)
                 docker run --rm -it --entrypoint sh -v agent-sandbox:/data local/agent-sandbox -lc '
                     mkdir -p /data/.claude
-                    chown -R claude:claude /data/.claude
+                    chown -R agent:agent /data/.claude
                     [ -f /data/.claude/settings.json ] || printf "{}\n" > /data/.claude/settings.json
-                    chown claude:claude /data/.claude/settings.json
-                    exec runuser -u claude -- vi /data/.claude/settings.json
+                    chown agent:agent /data/.claude/settings.json
+                    exec runuser -u agent -- vi /data/.claude/settings.json
                 '
                 ;;
             opencode)
                 docker run --rm -it --entrypoint sh -v agent-sandbox:/data local/agent-sandbox -lc '
                     mkdir -p /data/.config/opencode
-                    chown -R claude:claude /data/.config/opencode
+                    chown -R agent:agent /data/.config/opencode
                     if [ -f /data/.config/opencode/opencode.jsonc ]; then
                         settings_path=/data/.config/opencode/opencode.jsonc
                     else
@@ -638,8 +638,8 @@ GPGEOF
 EOF
                         fi
                     fi
-                    chown claude:claude "$settings_path"
-                    exec runuser -u claude -- vi "$settings_path"
+                    chown agent:agent "$settings_path"
+                    exec runuser -u agent -- vi "$settings_path"
                 '
                 ;;
             *)
@@ -673,19 +673,19 @@ EOF
         output_dir="$(pwd)/.agent-sandbox/opencode-sessions"
         mkdir -p "$output_dir"
 
-        # Use --user claude to write as uid 1000 (matches volume ownership).
+        # Use --user agent to write as uid 1000 (matches volume ownership).
         # Bypasses the entrypoint — image-time symlinks already point the
-        # opencode data dirs at /home/claude/persist, so mounting the volume
+        # opencode data dirs at /home/agent/persist, so mounting the volume
         # is enough for opencode to see this workspace's sessions.
         docker run --rm --entrypoint sh \
-            --user claude \
-            -e HOME=/home/claude \
-            -v agent-sandbox:/home/claude/persist \
+            --user agent \
+            -e HOME=/home/agent \
+            -v agent-sandbox:/home/agent/persist \
             -v "$(pwd):/workspaces/${project_name}" \
             -w "/workspaces/${project_name}" \
             local/agent-sandbox -c '
                 set -e
-                export PATH="/home/claude/.local/bin:$PATH"
+                export PATH="/home/agent/.local/bin:$PATH"
                 ids=$(opencode session list --format json 2>/dev/null | jq -r ".[].id")
                 if [ -z "$ids" ]; then
                     echo "No opencode sessions found for this workspace."
@@ -727,14 +727,14 @@ EOF
         fi
 
         docker run --rm --entrypoint sh \
-            --user claude \
-            -e HOME=/home/claude \
-            -v agent-sandbox:/home/claude/persist \
+            --user agent \
+            -e HOME=/home/agent \
+            -v agent-sandbox:/home/agent/persist \
             -v "$(pwd):/workspaces/${project_name}" \
             -w "/workspaces/${project_name}" \
             local/agent-sandbox -c '
                 set -e
-                export PATH="/home/claude/.local/bin:$PATH"
+                export PATH="/home/agent/.local/bin:$PATH"
                 count=0
                 for f in .agent-sandbox/opencode-sessions/*.json; do
                     [ -e "$f" ] || continue
