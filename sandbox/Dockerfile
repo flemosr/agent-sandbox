@@ -76,6 +76,14 @@ COPY --chown=claude:claude browser-tools/ /home/claude/.local/browser-tools/
 RUN chmod +x /home/claude/.local/browser-tools/browser.sh && \
     ln -sf /home/claude/.local/browser-tools/browser.sh /home/claude/.local/bin/browser
 
+# Install opencode using the official installer.
+# Placed after the Python venv so frequent opencode releases don't invalidate
+# the heavier venv layer's cache.
+# The installer ignores XDG_BIN_DIR and always drops the binary at
+# ~/.opencode/bin/opencode, so we symlink it into ~/.local/bin (alongside claude).
+RUN curl -fsSL https://opencode.ai/install | bash \
+    && ln -sf /home/claude/.opencode/bin/opencode /home/claude/.local/bin/opencode
+
 # Create persistent volume directory structure
 # All persistent data goes in persist which is mounted from a single Docker volume
 RUN mkdir -p /home/claude/persist/.claude
@@ -94,13 +102,30 @@ RUN rm -rf /home/claude/.claude \
 RUN mv /home/claude/.local/share/claude /home/claude/persist/.claude-versions 2>/dev/null || true \
     && ln -sf /home/claude/persist/.claude-versions /home/claude/.local/share/claude
 
-# Backup nvm, Rust, and Claude Code to template location for volume initialization
+# Set up persistence for opencode data (~/.local/share/opencode), config
+# (~/.config/opencode), and local UI state (~/.local/state/opencode).
+# Mirrors the claude pattern: move any installer-created content into the persist tree,
+# then symlink the expected locations into it.
+RUN mkdir -p /home/claude/persist/.local/share /home/claude/persist/.local/state /home/claude/persist/.config \
+    && mv /home/claude/.local/share/opencode /home/claude/persist/.local/share/opencode 2>/dev/null || true \
+    && mv /home/claude/.config/opencode /home/claude/persist/.config/opencode 2>/dev/null || true \
+    && mv /home/claude/.local/state/opencode /home/claude/persist/.local/state/opencode 2>/dev/null || true \
+    && mkdir -p /home/claude/persist/.local/share/opencode /home/claude/persist/.local/state/opencode /home/claude/persist/.config/opencode \
+    && mkdir -p /home/claude/.local/share /home/claude/.local/state /home/claude/.config \
+    && rm -rf /home/claude/.local/share/opencode /home/claude/.local/state/opencode /home/claude/.config/opencode \
+    && ln -sf /home/claude/persist/.local/share/opencode /home/claude/.local/share/opencode \
+    && ln -sf /home/claude/persist/.local/state/opencode /home/claude/.local/state/opencode \
+    && ln -sf /home/claude/persist/.config/opencode /home/claude/.config/opencode
+
+# Backup nvm, Rust, Claude Code, and opencode install data to template locations for
+# volume initialization.
 # This allows the entrypoint to seed the persistent volume on first run
 USER root
 RUN cp -a /home/claude/.nvm /opt/nvm-template \
     && cp -a /home/claude/.rustup /opt/rustup-template \
     && cp -a /home/claude/.cargo /opt/cargo-template \
-    && cp -a /home/claude/persist/.claude-versions /opt/claude-versions-template
+    && cp -a /home/claude/persist/.claude-versions /opt/claude-versions-template \
+    && cp -a /home/claude/.opencode /opt/opencode-template
 USER claude
 
 # Copy firewall and entrypoint scripts (after installs to preserve cache)

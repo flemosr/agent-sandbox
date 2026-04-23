@@ -1,10 +1,15 @@
 #!/bin/bash
 # Entrypoint script for Agent Sandbox
 
-# Always sync CLAUDE.md from image to persist volume (ensures freshness)
+# Always sync CLAUDE.md from image to persist volume (ensures freshness).
+# Also write AGENTS.md for opencode (same content, opencode's native convention).
 mkdir -p /home/claude/persist/.claude
 cp /opt/agent-context.md /home/claude/persist/.claude/CLAUDE.md
 chown -R claude:claude /home/claude/persist/.claude 2>/dev/null || true
+
+mkdir -p /home/claude/persist/.config/opencode
+cp /opt/agent-context.md /home/claude/persist/.config/opencode/AGENTS.md
+chown -R claude:claude /home/claude/persist/.config/opencode 2>/dev/null || true
 
 # Initialize nvm in persistent volume if empty (first run)
 if [ ! -d /home/claude/persist/.nvm/versions ]; then
@@ -70,6 +75,48 @@ if [ -d /home/claude/.local/share/claude/versions ]; then
     ln -sfn "/home/claude/.local/share/claude/versions/$latest_claude" /home/claude/.local/bin/claude
   fi
 fi
+
+# Initialize opencode install home in persistent volume if missing (first run)
+# This preserves the installer-managed binary and any upgrades across restarts.
+if [ ! -d /home/claude/persist/.opencode ]; then
+  echo "Initializing opencode install in persistent volume..."
+  cp -a /opt/opencode-template /home/claude/persist/.opencode
+  chown -R claude:claude /home/claude/persist/.opencode
+fi
+
+# Initialize opencode persist dirs if missing (first run only — avoids a wasteful
+# chown -R over accumulated session data on every container start)
+for opencode_dir in \
+    /home/claude/persist/.local/share/opencode \
+    /home/claude/persist/.local/state/opencode \
+    /home/claude/persist/.config/opencode; do
+  if [ ! -d "$opencode_dir" ]; then
+    mkdir -p "$opencode_dir"
+    chown claude:claude "$opencode_dir"
+  fi
+done
+
+# Ensure opencode symlinks exist (idempotent; handles first run and image rebuilds)
+if [ -d /home/claude/.opencode ] && [ ! -L /home/claude/.opencode ]; then
+  rm -rf /home/claude/.opencode
+fi
+ln -sfn /home/claude/persist/.opencode /home/claude/.opencode
+
+mkdir -p /home/claude/.local/share /home/claude/.local/state /home/claude/.config
+if [ -d /home/claude/.local/share/opencode ] && [ ! -L /home/claude/.local/share/opencode ]; then
+  rm -rf /home/claude/.local/share/opencode
+fi
+ln -sfn /home/claude/persist/.local/share/opencode /home/claude/.local/share/opencode
+
+if [ -d /home/claude/.local/state/opencode ] && [ ! -L /home/claude/.local/state/opencode ]; then
+  rm -rf /home/claude/.local/state/opencode
+fi
+ln -sfn /home/claude/persist/.local/state/opencode /home/claude/.local/state/opencode
+
+if [ -d /home/claude/.config/opencode ] && [ ! -L /home/claude/.config/opencode ]; then
+  rm -rf /home/claude/.config/opencode
+fi
+ln -sfn /home/claude/persist/.config/opencode /home/claude/.config/opencode
 
 # Initialize .gnupg in persistent volume if missing (first run)
 if [ ! -d /home/claude/persist/.gnupg ]; then
@@ -176,17 +223,29 @@ if [[ "$ENABLE_FIREWALL" == "1" ]]; then
   /opt/init-firewall.sh
 fi
 
-# Blank line to separate init logs from the Claude Code TUI
+# Blank line to separate init logs from the agent TUI
 echo
 
-# Run claude as the claude user in the current working directory
+# Dispatch to the selected agent CLI.
+# AGENT_CLI is set by the host runner (run_sandbox.sh); defaults to claude.
+agent_cli="${AGENT_CLI:-claude}"
+case "$agent_cli" in
+  claude|opencode) ;;
+  *)
+    echo "Error: unknown AGENT_CLI '$agent_cli' (expected 'claude' or 'opencode')" >&2
+    exit 1
+    ;;
+esac
+
+# Run the agent as the claude user in the current working directory.
+# `runuser -m` preserves the environment so vars like OPENCODE_CONFIG_CONTENT
+# (used to inject opencode's "permission: allow" for --yolo) cross the boundary.
+# `env …` re-sets HOME/USER/LOGNAME because -m also preserves those from root,
+# which would make the agent look up config under the wrong user.
+# cwd is inherited naturally (runuser doesn't chdir unless --login is passed).
 if [[ "$(id -u)" == "0" ]]; then
-  # Build argument string for passing through bash -c
-  args=""
-  for arg in "$@"; do
-    args="$args \"$arg\""
-  done
-  exec runuser -u claude -- bash -c "cd $(pwd) && exec claude $args"
+  exec runuser -m -u claude -- \
+    env HOME=/home/claude USER=claude LOGNAME=claude "$agent_cli" "$@"
 else
-  exec claude "$@"
+  exec "$agent_cli" "$@"
 fi

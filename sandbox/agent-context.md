@@ -12,16 +12,13 @@ Two types of data persist between sessions:
 
 1. **Workspace** (bind mount): Your project directory is mounted from the host. All file changes persist automatically.
 
-2. **User data** (Docker volume): Stored in `~/persist/` and symlinked to expected locations:
-   - `~/.claude/` - Claude Code config, credentials, settings
-   - `~/.claude.json` - Onboarding state
-   - `~/.local/share/claude/` - Claude Code binary versions (stored as `~/persist/.claude-versions`)
+2. **User data** (Docker volume): Stored in `~/persist/` and symlinked to expected locations. Your agent's config, credentials, and install directory persist here, along with:
    - `~/.nvm/` - Node.js versions and global npm packages
    - `~/.rustup/` - Rust toolchains and components
    - `~/.cargo/` - Cargo registry cache, installed binaries, and config
    - `~/.gnupg/` - GPG keys for commit signing (when GPG_SIGNING is enabled)
 
-This means installed Node versions (`nvm install 20`), global packages (`npm i -g typescript`), Rust toolchains, and Claude Code updates persist across container restarts.
+This means installed Node versions (`nvm install 20`), global packages (`npm i -g typescript`), Rust toolchains, and agent upgrades persist across container restarts.
 
 ## Exposed Ports
 
