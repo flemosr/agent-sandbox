@@ -1,4 +1,4 @@
 services:
-  agent-sandbox:
+  agent-workcell:
     build: sandbox/
-    image: local/agent-sandbox
+    image: local/agent-workcell
