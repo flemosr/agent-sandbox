@@ -1,6 +1,8 @@
-**/.DS_Store
-**/.agent-sandbox
+.DS_Store
+.agent-sandbox/
+.codex
 
-**/.ruff_cache
-**/__pycache__
+.ruff_cache/
+__pycache__/
+
 config.sh
