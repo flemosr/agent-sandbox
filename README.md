@@ -1,4 +1,4 @@
-# Agent Sandbox
+# Agent Workcell
 
 An opinionated, containerized environment for running coding agents in YOLO mode, with Chrome
 integration, selective persistence, and isolated GPG-signed commits.
@@ -15,7 +15,7 @@ sandbox's capabilities and constraints.
 
 ## Setup
 
-### 1. Build the sandbox image
+### 1. Build the `agent-workcell` image
 
 ```bash
 docker compose build
@@ -26,10 +26,10 @@ docker compose build
 Add this to your `~/.zshrc`:
 
 ```bash
-alias agent-sandbox="/path/to/agent-sandbox/cli.sh"
+alias workcell="/path/to/agent-workcell/cli.sh"
 ```
 
-Replace `/path/to/agent-sandbox` with the actual path to this repository.
+Replace `/path/to/agent-workcell` with the actual path to this repository.
 
 Then reload your shell:
 
@@ -39,10 +39,10 @@ source ~/.zshrc
 
 ### 3. Authenticate (first time only)
 
-Run the sandbox once to authenticate with your Anthropic account:
+Run the workcell with a selected agent once to authenticate with your corresponding account:
 
 ```bash
-agent-sandbox run
+workcell run claude
 ```
 
 ### 4. Configure Chrome (optional)
@@ -79,16 +79,16 @@ Your `config.sh` is gitignored, so your personal settings won't be committed.
 
 ### 5. Configure GPG commit signing (optional)
 
-To have commits made inside the sandbox show as "Verified" on GitHub, enable GPG signing in your
+To have commits made inside the workcell show as "Verified" on GitHub, enable GPG signing in your
 `config.sh`:
 
 ```bash
-GIT_AUTHOR_NAME="Sandbox Agent Name"
+GIT_AUTHOR_NAME="Workcell Agent Name"
 GIT_AUTHOR_EMAIL="agent@example.local"
 GPG_SIGNING=true
 ```
 
-On first launch, the sandbox generates a passphrase-less ed25519 GPG key and prints the public key.
+On first launch, the workcell generates a passphrase-less ed25519 GPG key and prints the public key.
 If you want the agent's commits to appear as verified on GitHub, add it to your account at:
 **Settings > SSH and GPG keys > New GPG key**.
 
@@ -99,49 +99,49 @@ commands.
 
 ## Usage
 
-### Run the sandbox
+### Run the workcell
 
 Navigate to any project directory and run:
 
 ```bash
 # Normal mode (defaults to claude)
-agent-sandbox run
+workcell run
 
 # Explicit agent selection
-agent-sandbox run claude
-agent-sandbox run opencode
-agent-sandbox run codex
+workcell run claude
+workcell run opencode
+workcell run codex
 
 # YOLO mode (no permission prompts)
-agent-sandbox run --yolo
-agent-sandbox run opencode --yolo
-agent-sandbox run codex --yolo
+workcell run --yolo
+workcell run opencode --yolo
+workcell run codex --yolo
 
 # Firewalled mode (restricted network access)
-agent-sandbox run --firewalled
+workcell run --firewalled
 
 # Chrome enabled (browser control)
-agent-sandbox run --with-chrome
+workcell run --with-chrome
 
 # Expose a port for dev server (accessible at localhost:3000 on host)
-agent-sandbox run --port 3000
+workcell run --port 3000
 
 # Multiple ports
-agent-sandbox run --port 3000 --port 5173
+workcell run --port 3000 --port 5173
 
 # Web dev setup: YOLO + Chrome + port exposed
-agent-sandbox run --yolo --with-chrome --port 3000
+workcell run --yolo --with-chrome --port 3000
 
 # YOLO + firewalled
-agent-sandbox run --yolo --firewalled
+workcell run --yolo --firewalled
 
 # With a prompt
-agent-sandbox run --yolo -p "fix the tests"
+workcell run --yolo -p "fix the tests"
 
 # Pass any agent-specific arguments
-agent-sandbox run --resume
-agent-sandbox run opencode run "summarize the repo"
-agent-sandbox run codex "fix the tests"
+workcell run --resume
+workcell run opencode run "summarize the repo"
+workcell run codex "fix the tests"
 ```
 
 **Choosing an agent.** The first positional arg after `run` selects the agent: `claude` (default),
@@ -154,66 +154,66 @@ agent's native bypass:
   (opencode's CLI flag only applies to the non-interactive `run` subcommand, not the TUI)
 - **codex** → `--dangerously-bypass-approvals-and-sandbox` CLI flag
 
-**Shorthand:** Running `agent-sandbox` without a command defaults to `run` with claude:
+**Shorthand:** Running `workcell` without a command defaults to `run` with claude:
 
 ```bash
-agent-sandbox --yolo --with-chrome --port 3000
+workcell --yolo --with-chrome --port 3000
 ```
 
 ### Start Chrome separately
 
-If you want to start Chrome independently (e.g., to keep it running across sandbox sessions):
+If you want to start Chrome independently (e.g., to keep it running across workcell sessions):
 
 ```bash
 # Start Chrome with remote debugging
-agent-sandbox start-chrome
+workcell start-chrome
 
 # Auto-restart if Chrome is running
-agent-sandbox start-chrome --restart
+workcell start-chrome --restart
 
 # Override settings from config
-agent-sandbox start-chrome --port 9333 --profile "Profile 1"
+workcell start-chrome --port 9333 --profile "Profile 1"
 ```
 
 ### Manage GPG keys
 
 ```bash
 # Generate a new key (reads identity from config.sh)
-agent-sandbox gpg-new
+workcell gpg-new
 
-# Export the sandbox GPG key
-agent-sandbox gpg-export --file my-key-backup.asc
+# Export the workcell GPG key
+workcell gpg-export --file my-key-backup.asc
 
 # Import a previously exported key
-agent-sandbox gpg-import --file my-key-backup.asc
+workcell gpg-import --file my-key-backup.asc
 
 # Generate a revocation certificate
-agent-sandbox gpg-revoke --file revoke.asc
+workcell gpg-revoke --file revoke.asc
 
-# Erase all GPG keys from the sandbox
-agent-sandbox gpg-erase
+# Erase all GPG keys from the workcell
+workcell gpg-erase
 ```
 
-### Edit sandbox settings
+### Edit workcell settings
 
-Open an agent's config file in `vi` (inside the sandbox Docker volume). The agent argument is
+Open an agent's config file in `vi` (inside the workcell Docker volume). The agent argument is
 required — there is no default, to avoid accidentally editing the wrong file:
 
 ```bash
 # Claude Code: edits ~/.claude/settings.json. See https://docs.anthropic.com/en/docs/claude-code/settings
-agent-sandbox settings claude
+workcell settings claude
 
 # OpenCode: edits ~/.config/opencode/opencode.jsonc if present. See https://opencode.ai/docs/config/
 # otherwise ~/.config/opencode/opencode.json
-agent-sandbox settings opencode
+workcell settings opencode
 
 # Codex: edits ~/.codex/config.toml. See https://developers.openai.com/codex/config-reference
-agent-sandbox settings codex
+workcell settings codex
 ```
 
-If no OpenCode config file exists yet, `agent-sandbox settings opencode` creates a minimal
+If no OpenCode config file exists yet, `workcell settings opencode` creates a minimal
 `opencode.json` with the schema URL before opening it.
-If no Codex config file exists yet, `agent-sandbox settings codex` creates an empty
+If no Codex config file exists yet, `workcell settings codex` creates an empty
 `config.toml` before opening it.
 
 These edits persist across container restarts.
@@ -221,13 +221,13 @@ These edits persist across container restarts.
 ## How it works
 
 - Your current directory is mounted at `/workspaces/<project-name>` inside the container
-- Workspace-local sandbox files for the current project live under `.agent-sandbox/`
-- Claude session history for the project is stored in `.agent-sandbox/claude-sessions/`
-- `.agent-sandbox/tasks/` is created for task-management files and other local multi-agent scratch work
+- Workspace-local workcell files for the current project live under `.workcell/`
+- Claude session history for the project is stored in `.workcell/claude-sessions/`
+- `.workcell/tasks/` is created for task-management files and other local multi-agent scratch work
 - OpenCode session history and storage persist in the Docker volume under
   `~/.local/share/opencode/`
 - Codex auth, config, history, and logs persist in the Docker volume under `~/.codex/`
-- Codex conversation/session files for the project are bind-mounted into `.agent-sandbox/codex-sessions/`
+- Codex conversation/session files for the project are bind-mounted into `.workcell/codex-sessions/`
 - Agent settings (claude, opencode, and codex) persist between sessions via a Docker volume
 - The container runs as non-root user `agent` for safety (agent-neutral, regardless of which agent
   CLI is launched)
@@ -244,11 +244,11 @@ These edits persist across container restarts.
 
 ### User data (Docker volume)
 
-User-level data (credentials, settings, plugins) is stored in a Docker volume `agent-sandbox`,
+User-level data (credentials, settings, plugins) is stored in a Docker volume `agent-workcell`,
 mounted at `/home/agent/persist` inside the container.
 
 ```
-agent-sandbox → /home/agent/persist/
+agent-workcell → /home/agent/persist/
 ├── .claude/                  # Claude Code configuration (~/.claude)
 │   ├── .credentials.json     # (plaintext — keep the volume private)
 │   ├── settings.json
@@ -304,28 +304,28 @@ the image, so image rebuilds pick up the newer Codex version without any volume 
 
 > **Security note.** All agents store credentials as plaintext inside the Docker volume
 > (`~/.claude/.credentials.json` for claude, `~/.local/share/opencode/auth.json` for OpenCode,
-> `~/.codex/auth.json` for Codex). Anyone who can read the `agent-sandbox` volume can read those
-> keys. Treat volume backups (`agent-sandbox volume-backup`) as sensitive.
+> `~/.codex/auth.json` for Codex). Anyone who can read the `agent-workcell` volume can read those
+> keys. Treat volume backups (`workcell volume-backup`) as sensitive.
 
-### Workspace-local sandbox data
+### Workspace-local workcell data
 
-The sandbox creates a workspace-local `.agent-sandbox/` directory for project-scoped agent
+The workcell creates a workspace-local `.workcell/` directory for project-scoped agent
 sessions and task-management files:
 
-- `.agent-sandbox/claude-sessions/` — bind-mounted to claude's per-project session dir
+- `.workcell/claude-sessions/` — bind-mounted to claude's per-project session dir
   (`~/persist/.claude/projects/-workspaces-<project>/`)
-- `.agent-sandbox/opencode-sessions/` — destination for `agent-sandbox opencode-sessions-export`
+- `.workcell/opencode-sessions/` — destination for `workcell opencode-sessions-export`
   (one JSON file per session; see [opencode session data](#opencode-session-data))
-- `.agent-sandbox/codex-sessions/` — the workspace-local source of truth for Codex conversation
+- `.workcell/codex-sessions/` — the workspace-local source of truth for Codex conversation
   files, with two sibling subdirectories: `sessions/` (bind-mounted to `~/persist/.codex/sessions/`,
   date-partitioned as `sessions/YYYY/MM/DD/*.jsonl`) and `archived_sessions/` (bind-mounted to
   `~/persist/.codex/archived_sessions/`)
-- `.agent-sandbox/tasks/` — task-management files and scratch notes for multi-agent workflows
+- `.workcell/tasks/` — task-management files and scratch notes for multi-agent workflows
   (see [Multi-agent task files](#multi-agent-task-files))
 
 ### Multi-agent task files
 
-`.agent-sandbox/tasks/` is a shared scratchpad for coordinating work across multiple agent
+`.workcell/tasks/` is a shared scratchpad for coordinating work across multiple agent
 sessions — sub-agents within a single run or different agents across different sessions. Agents
 are instructed (via the injected global context file) to create a task file whenever a request
 spans multiple steps or is likely to continue later, and to read existing task files before
@@ -359,15 +359,15 @@ OpenCode persists its session state in the Docker volume:
 - `~/persist/.local/share/opencode/storage/` — additional session artifacts such as
   `session_diff/` and migration metadata
 
-This means OpenCode sessions survive sandbox restarts and image rebuilds, but they are tied to the
+This means OpenCode sessions survive workcell restarts and image rebuilds, but they are tied to the
 Docker volume rather than the workspace tree. To keep a workspace-local backup that survives
-`agent-sandbox volume-rm`, export them:
+`workcell volume-rm`, export them:
 
 ```bash
-agent-sandbox opencode-sessions-export
+workcell opencode-sessions-export
 ```
 
-This writes one JSON file per session to `.agent-sandbox/opencode-sessions/<session-id>.json`,
+This writes one JSON file per session to `.workcell/opencode-sessions/<session-id>.json`,
 auto-scoped to the current workspace (OpenCode derives the project ID from the git root-commit
 SHA, or uses `"global"` for non-git directories). Re-running the command overwrites existing
 files; session files for sessions later deleted in OpenCode are left in place as recovery
@@ -376,14 +376,14 @@ artifacts.
 To restore after a `volume-rm` (or on a fresh machine), run:
 
 ```bash
-agent-sandbox opencode-sessions-import
+workcell opencode-sessions-import
 ```
 
-This imports every JSON file under `.agent-sandbox/opencode-sessions/`. Session IDs and project
+This imports every JSON file under `.workcell/opencode-sessions/`. Session IDs and project
 scoping are preserved from the JSON, so sessions restore to the original workspace as long as the
 git root-commit SHA matches. Re-importing an existing session is a no-op.
 
-> **Tip.** Add `.agent-sandbox/` to your `.gitignore` (global or per-repo). These files are local
+> **Tip.** Add `.workcell/` to your `.gitignore` (global or per-repo). These files are local
 > state, not source — and like any agent history they may contain secrets the agent read during
 > the session.
 
@@ -391,21 +391,21 @@ git root-commit SHA matches. Re-importing an existing session is a no-op.
 
 ```bash
 # Open a shell in the volume
-agent-sandbox volume-shell
+workcell volume-shell
 
 # Backup the volume
-agent-sandbox volume-backup --file agent-sandbox-bkp.tgz
+workcell volume-backup --file agent-workcell-bkp.tgz
 
 # Restore from backup
-agent-sandbox volume-restore --file agent-sandbox-bkp.tgz
+workcell volume-restore --file agent-workcell-bkp.tgz
 
 # Remove the volume
-agent-sandbox volume-rm
+workcell volume-rm
 ```
 
 ## Browser Integration (Web Development)
 
-The sandbox includes browser control tools for web development workflows. Claude can interact with
+The workcell includes browser control tools for web development workflows. Claude can interact with
 Chrome running on your host machine via the Chrome DevTools Protocol (CDP).
 
 ### Prerequisites
@@ -421,14 +421,14 @@ brew install socat
 Simply use the `--with-chrome` flag:
 
 ```bash
-agent-sandbox --with-chrome
+workcell --with-chrome
 ```
 
 This automatically:
 1. Starts Chrome with remote debugging (using your "claude" profile)
 2. Sets up port forwarding via socat
 3. Sets `CHROME_LOG` env var and mounts the log file (for troubleshooting)
-4. Cleans up Chrome when the sandbox exits
+4. Cleans up Chrome when the workcell exits
 
 The agent can use `browser test` to check if Chrome is available.
 
@@ -456,7 +456,7 @@ Docker containers can't reach the host's localhost directly, we use `socat` as a
 Dev servers running in the container are exposed via the `--port` flag:
 
 ```bash
-agent-sandbox --with-chrome --port 3000
+workcell --with-chrome --port 3000
 ```
 
 ```
@@ -481,7 +481,7 @@ The `$EXPOSED_PORTS` env var contains the list of exposed ports (e.g., `3000,517
 **Complete flow for web development:**
 
 *User (on host):*
-1. Start sandbox with port: `agent-sandbox --with-chrome --port 3000`
+1. Start workcell with port: `workcell --with-chrome --port 3000`
 
 *Agent (in container):*  
 2. Start dev server: `npm run dev -- --host 0.0.0.0` (must bind to 0.0.0.0)  
@@ -489,7 +489,7 @@ The `$EXPOSED_PORTS` env var contains the list of exposed ports (e.g., `3000,517
 
 ## Available Tools
 
-The sandbox comes with the following pre-installed:
+The workcell comes with the following pre-installed:
 
 | Category | Tools |
 |----------|-------|
@@ -516,7 +516,7 @@ to fetch docs and install packages.
 ## Project structure
 
 ```
-agent-sandbox/
+agent-workcell/
 ├── README.md
 ├── docker-compose.yml
 ├── cli.sh                      # Main CLI entrypoint
