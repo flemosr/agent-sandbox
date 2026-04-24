@@ -3,9 +3,10 @@
 An opinionated, containerized environment for running coding agents in YOLO mode, with Chrome
 integration, selective persistence, and isolated GPG-signed commits.
 
-Supports [Claude Code](https://claude.ai/code) and [OpenCode](https://opencode.ai/), selectable
-per-launch. Geared towards Rust, Python, and TypeScript development. A global context file is
-injected so the agent is aware of the sandbox's capabilities and constraints.
+Supports [Claude Code](https://claude.ai/code), [OpenCode](https://opencode.ai/), and
+[Codex](https://github.com/openai/codex), selectable per-launch. Geared towards Rust, Python,
+and TypeScript development. A global context file is injected so the agent is aware of the
+sandbox's capabilities and constraints.
 
 ## Prerequisites
 
@@ -109,10 +110,12 @@ agent-sandbox run
 # Explicit agent selection
 agent-sandbox run claude
 agent-sandbox run opencode
+agent-sandbox run codex
 
 # YOLO mode (no permission prompts)
 agent-sandbox run --yolo
 agent-sandbox run opencode --yolo
+agent-sandbox run codex --yolo
 
 # Firewalled mode (restricted network access)
 agent-sandbox run --firewalled
@@ -138,16 +141,18 @@ agent-sandbox run --yolo -p "fix the tests"
 # Pass any agent-specific arguments
 agent-sandbox run --resume
 agent-sandbox run opencode run "summarize the repo"
+agent-sandbox run codex "fix the tests"
 ```
 
-**Choosing an agent.** The first positional arg after `run` selects the agent: `claude` (default)
-or `opencode`. Both agents use the same sandbox image, the same persistent Docker volume, and the
-same `--yolo` / `--firewalled` / `--with-chrome` / `--port` flags. `--yolo` maps to each agent's
-native bypass:
+**Choosing an agent.** The first positional arg after `run` selects the agent: `claude` (default),
+`opencode`, or `codex`. All agents use the same sandbox image, the same persistent Docker volume,
+and the same `--yolo` / `--firewalled` / `--with-chrome` / `--port` flags. `--yolo` maps to each
+agent's native bypass:
 
 - **claude** → `--dangerously-skip-permissions` CLI flag
 - **opencode** → `{"permission":"allow"}` injected via the `OPENCODE_CONFIG_CONTENT` env var
   (opencode's CLI flag only applies to the non-interactive `run` subcommand, not the TUI)
+- **codex** → `--dangerously-bypass-approvals-and-sandbox` CLI flag
 
 **Shorthand:** Running `agent-sandbox` without a command defaults to `run` with claude:
 
@@ -195,16 +200,21 @@ Open an agent's config file in `vi` (inside the sandbox Docker volume). The agen
 required — there is no default, to avoid accidentally editing the wrong file:
 
 ```bash
-# Claude Code: edits ~/.claude/settings.json
+# Claude Code: edits ~/.claude/settings.json. See https://docs.anthropic.com/en/docs/claude-code/settings
 agent-sandbox settings claude
 
-# OpenCode: edits ~/.config/opencode/opencode.jsonc if present,
+# OpenCode: edits ~/.config/opencode/opencode.jsonc if present. See https://opencode.ai/docs/config/
 # otherwise ~/.config/opencode/opencode.json
 agent-sandbox settings opencode
+
+# Codex: edits ~/.codex/config.toml. See https://developers.openai.com/codex/config-reference
+agent-sandbox settings codex
 ```
 
 If no OpenCode config file exists yet, `agent-sandbox settings opencode` creates a minimal
 `opencode.json` with the schema URL before opening it.
+If no Codex config file exists yet, `agent-sandbox settings codex` creates an empty
+`config.toml` before opening it.
 
 These edits persist across container restarts.
 
@@ -216,15 +226,18 @@ These edits persist across container restarts.
 - `.agent-sandbox/tasks/` is created for task-management files and other local multi-agent scratch work
 - OpenCode session history and storage persist in the Docker volume under
   `~/.local/share/opencode/`
-- Agent settings (claude and opencode) persist between sessions via a Docker volume
+- Codex auth, config, history, and logs persist in the Docker volume under `~/.codex/`
+- Codex conversation/session files for the project are bind-mounted into `.agent-sandbox/codex-sessions/`
+- Agent settings (claude, opencode, and codex) persist between sessions via a Docker volume
 - The container runs as non-root user `agent` for safety (agent-neutral, regardless of which agent
   CLI is launched)
 - Full network access is available (for web searches, docs, git, etc.)
 - Filesystem access is isolated to the mounted directory
 - Host services are accessible via `host.docker.internal`
 - Dev server ports can be exposed with `--port <port>` (sets `$EXPOSED_PORTS` env var)
-- A global context file is injected as `~/.claude/CLAUDE.md` (claude) and
-  `~/.config/opencode/AGENTS.md` (opencode) to inform each agent about the sandbox environment
+- A global context file is injected as `~/.claude/CLAUDE.md` (claude),
+  `~/.config/opencode/AGENTS.md` (opencode), and `~/.codex/AGENTS.md` (codex) to inform each
+  agent about the sandbox environment
 - With `--with-chrome`, agents can control Chrome on the host for web development
 
 ## Persistence
@@ -255,6 +268,12 @@ agent-sandbox → /home/agent/persist/
 │   ├── opencode.db           # session/message history
 │   └── storage/              # additional OpenCode session artifacts
 ├── .opencode/                # OpenCode install home (binary + bundled dependencies)
+├── .codex/                   # Codex configuration and non-session state (~/.codex)
+│   ├── config.toml           # User settings
+│   ├── auth.json             # (plaintext — keep the volume private)
+│   ├── history.jsonl         # Command history
+│   ├── log/                  # Logs
+│   └── AGENTS.md             # Global agent context (codex)
 ├── .rustup/                  # Rust toolchains and components
 ├── .cargo/                   # Cargo registry cache, installed binaries, and config
 ├── .gnupg/                   # GPG keys for commit signing (when GPG_SIGNING is enabled)
@@ -272,19 +291,21 @@ The entrypoint creates symlinks so tools find their config in the expected locat
 - `~/.config/opencode` → `~/persist/.config/opencode`
 - `~/.local/state/opencode` → `~/persist/.local/state/opencode`
 - `~/.local/share/opencode` → `~/persist/.local/share/opencode`
+- `~/.codex` → `~/persist/.codex`
 - `~/.rustup` → `~/persist/.rustup`
 - `~/.cargo` → `~/persist/.cargo`
 - `~/.gnupg` → `~/persist/.gnupg`
 - `~/.nvm` → `~/persist/.nvm`
 
 This ensures authentication, settings, OpenCode's local model-picker state, installed claude
-and OpenCode versions, Rust toolchains, Node.js versions, and global npm packages persist across
-container restarts and image rebuilds.
+and OpenCode versions, Rust toolchains, Node.js versions, and global npm packages persist
+across container restarts and image rebuilds. Codex ships as a standalone binary baked into
+the image, so image rebuilds pick up the newer Codex version without any volume interaction.
 
-> **Security note.** Both agents store credentials as plaintext inside the Docker volume
-> (`~/.claude/.credentials.json` for claude, `~/.local/share/opencode/auth.json` for OpenCode).
-> Anyone who can read the `agent-sandbox` volume can read those keys. Treat volume backups
-> (`agent-sandbox volume-backup`) as sensitive.
+> **Security note.** All agents store credentials as plaintext inside the Docker volume
+> (`~/.claude/.credentials.json` for claude, `~/.local/share/opencode/auth.json` for OpenCode,
+> `~/.codex/auth.json` for Codex). Anyone who can read the `agent-sandbox` volume can read those
+> keys. Treat volume backups (`agent-sandbox volume-backup`) as sensitive.
 
 ### Workspace-local sandbox data
 
@@ -295,6 +316,10 @@ sessions and task-management files:
   (`~/persist/.claude/projects/-workspaces-<project>/`)
 - `.agent-sandbox/opencode-sessions/` — destination for `agent-sandbox opencode-sessions-export`
   (one JSON file per session; see [opencode session data](#opencode-session-data))
+- `.agent-sandbox/codex-sessions/` — the workspace-local source of truth for Codex conversation
+  files, with two sibling subdirectories: `sessions/` (bind-mounted to `~/persist/.codex/sessions/`,
+  date-partitioned as `sessions/YYYY/MM/DD/*.jsonl`) and `archived_sessions/` (bind-mounted to
+  `~/persist/.codex/archived_sessions/`)
 - `.agent-sandbox/tasks/` — task-management files and scratch notes for multi-agent workflows
   (see [Multi-agent task files](#multi-agent-task-files))
 
@@ -480,12 +505,13 @@ The sandbox comes with the following pre-installed:
 Use the `--firewalled` flag to restrict network access to essential domains only:
 
 - Anthropic API (api.anthropic.com, claude.ai)
+- OpenAI / Codex (api.openai.com, chatgpt.com, auth.openai.com)
 - JavaScript/TypeScript (npm, Yarn, nodejs.org)
 - Rust (crates.io, docs.rs, rust-lang.org)
 - GitHub
 
-This reduces the risk of data exfiltration to unauthorized servers while still allowing Claude to
-fetch docs and install packages.
+This reduces the risk of data exfiltration to unauthorized servers while still allowing the agent
+to fetch docs and install packages.
 
 ## Project structure
 
