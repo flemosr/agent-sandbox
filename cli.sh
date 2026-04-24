@@ -1,31 +1,33 @@
 #!/bin/bash
-# Agent Sandbox CLI
+# Agent Workcell CLI
 #
 # Usage:
-#   agent-sandbox run [agent] [options]   Run the sandbox in current directory
+#   workcell run [agent] [options]   Run the sandbox in current directory
 #                                          (agent: claude [default] | opencode | codex)
-#   agent-sandbox start-chrome [options]  Start Chrome with remote debugging
-#   agent-sandbox gpg-new                  Generate a new sandbox GPG key
-#   agent-sandbox gpg-export --file <f>    Export sandbox GPG key to a file
-#   agent-sandbox gpg-import --file <f>   Import a GPG key into the sandbox
-#   agent-sandbox gpg-revoke --file <f>   Generate a revocation certificate
-#   agent-sandbox gpg-erase               Erase the sandbox GPG key
-#   agent-sandbox volume-shell             Open a shell in the sandbox volume
-#   agent-sandbox volume-backup --file <f> Backup the sandbox volume
-#   agent-sandbox volume-restore --file <f> Restore the sandbox volume from backup
-#   agent-sandbox volume-rm               Remove the sandbox volume
-#   agent-sandbox settings <agent>        Open an agent's settings/config in vi
-#   agent-sandbox opencode-sessions-export Export opencode sessions for current workspace
-#   agent-sandbox opencode-sessions-import Import opencode sessions from workspace backup
-#   agent-sandbox help                    Show this help message
+#   workcell start-chrome [options]  Start Chrome with remote debugging
+#   workcell gpg-new                  Generate a new sandbox GPG key
+#   workcell gpg-export --file <f>    Export sandbox GPG key to a file
+#   workcell gpg-import --file <f>   Import a GPG key into the sandbox
+#   workcell gpg-revoke --file <f>   Generate a revocation certificate
+#   workcell gpg-erase               Erase the sandbox GPG key
+#   workcell volume-shell             Open a shell in the sandbox volume
+#   workcell volume-backup --file <f> Backup the sandbox volume
+#   workcell volume-restore --file <f> Restore the sandbox volume from backup
+#   workcell volume-rm               Remove the sandbox volume
+#   workcell settings <agent>        Open an agent's settings/config in vi
+#   workcell opencode-sessions-export Export opencode sessions for current workspace
+#   workcell opencode-sessions-import Import opencode sessions from workspace backup
+#   workcell help                    Show this help message
 #
 # For detailed help on each command:
-#   agent-sandbox run --help
-#   agent-sandbox start-chrome --help
+#   workcell run --help
+#   workcell start-chrome --help
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WORKCELL_VOLUME_NAME="agent-workcell"
+WORKCELL_IMAGE_NAME="local/agent-workcell"
 
 # Ensure common Docker CLI locations are on PATH.
 # IDE task runners (e.g. Zed, VS Code) may launch with a minimal environment
@@ -38,10 +40,10 @@ done
 
 show_help() {
     cat << 'EOF'
-Agent Sandbox - Run coding agents safely in Docker
+Agent Workcell - Run coding agents safely in Docker
 
 Usage:
-  agent-sandbox <command> [options]
+  workcell <command> [options]
 
 Commands:
   run [agent]     Run the sandbox in current directory (default: claude)
@@ -58,32 +60,32 @@ Commands:
   volume-rm       Remove the sandbox volume
   settings <agent>   Open an agent's settings/config in vi
   opencode-sessions-export  Export opencode sessions for current workspace
-                            to .agent-sandbox/opencode-sessions/
+                            to .workcell/opencode-sessions/
   opencode-sessions-import  Import opencode sessions from
-                            .agent-sandbox/opencode-sessions/
+                            .workcell/opencode-sessions/
   help            Show this help message
 
 Examples:
-  agent-sandbox run
-  agent-sandbox run claude --yolo --with-chrome --port 3000
-  agent-sandbox run opencode --yolo
-  agent-sandbox run codex --yolo
-  agent-sandbox start-chrome
-  agent-sandbox start-chrome --restart
-  agent-sandbox gpg-new
-  agent-sandbox gpg-export --file my-key.asc
-  agent-sandbox gpg-import --file my-key.asc
-  agent-sandbox gpg-revoke --file revoke.asc
-  agent-sandbox gpg-erase
-  agent-sandbox volume-shell
-  agent-sandbox volume-backup --file backup.tgz
-  agent-sandbox volume-restore --file backup.tgz
-  agent-sandbox volume-rm
-  agent-sandbox settings claude
-  agent-sandbox settings opencode
-  agent-sandbox settings codex
-  agent-sandbox opencode-sessions-export
-  agent-sandbox opencode-sessions-import
+  workcell run
+  workcell run claude --yolo --with-chrome --port 3000
+  workcell run opencode --yolo
+  workcell run codex --yolo
+  workcell start-chrome
+  workcell start-chrome --restart
+  workcell gpg-new
+  workcell gpg-export --file my-key.asc
+  workcell gpg-import --file my-key.asc
+  workcell gpg-revoke --file revoke.asc
+  workcell gpg-erase
+  workcell volume-shell
+  workcell volume-backup --file backup.tgz
+  workcell volume-restore --file backup.tgz
+  workcell volume-rm
+  workcell settings claude
+  workcell settings opencode
+  workcell settings codex
+  workcell opencode-sessions-export
+  workcell opencode-sessions-import
 
 For more information, see README.md
 EOF
@@ -91,10 +93,10 @@ EOF
 
 show_run_help() {
     cat << 'EOF'
-Run the Agent Sandbox in the current directory
+Run the Agent Workcell in the current directory
 
 Usage:
-  agent-sandbox run [agent] [options] [-- agent-args]
+  workcell run [agent] [options] [-- agent-args]
 
 Agents:
   claude     (default) Launch Claude Code
@@ -112,13 +114,13 @@ Options:
   --port <port>     Expose a port for dev servers (can be repeated)
 
 Examples:
-  agent-sandbox run
-  agent-sandbox run claude --yolo
-  agent-sandbox run opencode --yolo
-  agent-sandbox run codex --yolo
-  agent-sandbox run claude --yolo --with-chrome --port 3000
-  agent-sandbox run opencode --port 3000 --port 5173
-  agent-sandbox run codex --yolo --port 3000
+  workcell run
+  workcell run claude --yolo
+  workcell run opencode --yolo
+  workcell run codex --yolo
+  workcell run claude --yolo --with-chrome --port 3000
+  workcell run opencode --port 3000 --port 5173
+  workcell run codex --yolo --port 3000
 EOF
 }
 
@@ -180,7 +182,7 @@ show_start_chrome_help() {
 Start Chrome with remote debugging for sandbox connection
 
 Usage:
-  agent-sandbox start-chrome [options]
+  workcell start-chrome [options]
 
 Options:
   --port <port>       Override debug port from config
@@ -188,9 +190,9 @@ Options:
   --restart, -r       Kill running Chrome and restart with debugging
 
 Examples:
-  agent-sandbox start-chrome
-  agent-sandbox start-chrome --restart
-  agent-sandbox start-chrome --port 9333 --profile "Profile 1"
+  workcell start-chrome
+  workcell start-chrome --restart
+  workcell start-chrome --port 9333 --profile "Profile 1"
 
 Note: Chrome must not be running, or use --restart to auto-restart it.
 EOF
@@ -230,7 +232,7 @@ case "$command" in
             echo "Generate a new sandbox GPG key"
             echo ""
             echo "Usage:"
-            echo "  agent-sandbox gpg-new"
+            echo "  workcell gpg-new"
             echo ""
             echo "Reads GIT_AUTHOR_NAME and GIT_AUTHOR_EMAIL from config.sh."
             echo "If a key already exists, prompts before overwriting."
@@ -250,7 +252,7 @@ case "$command" in
         ensure_docker_running
 
         # Check for existing key
-        existing=$(docker run --rm --entrypoint bash -v agent-sandbox:/data local/agent-sandbox \
+        existing=$(docker run --rm --entrypoint bash -v "${WORKCELL_VOLUME_NAME}:/data" "$WORKCELL_IMAGE_NAME" \
             -c 'gpg --homedir /data/.gnupg --no-permission-warning --list-keys --with-colons 2>/dev/null | grep "^uid" | head -1 | cut -d: -f10')
 
         if [ -n "$existing" ]; then
@@ -265,15 +267,15 @@ case "$command" in
                     exit 0
                     ;;
             esac
-            docker run --rm --entrypoint bash -v agent-sandbox:/data local/agent-sandbox \
+            docker run --rm --entrypoint bash -v "${WORKCELL_VOLUME_NAME}:/data" "$WORKCELL_IMAGE_NAME" \
                 -c 'rm -rf /data/.gnupg/*'
         fi
 
         echo "Generating GPG signing key for $GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL>..."
-        docker run --rm --entrypoint bash -v agent-sandbox:/data \
+        docker run --rm --entrypoint bash -v "${WORKCELL_VOLUME_NAME}:/data" \
             -e "GIT_AUTHOR_NAME=$GIT_AUTHOR_NAME" \
             -e "GIT_AUTHOR_EMAIL=$GIT_AUTHOR_EMAIL" \
-            local/agent-sandbox \
+            "$WORKCELL_IMAGE_NAME" \
             -c '
                 gpg --homedir /data/.gnupg --no-permission-warning --batch --gen-key <<GPGEOF
 %no-protection
@@ -302,7 +304,7 @@ GPGEOF
                     echo "Export the sandbox GPG key to a file"
                     echo ""
                     echo "Usage:"
-                    echo "  agent-sandbox gpg-export --file <path>"
+                    echo "  workcell gpg-export --file <path>"
                     echo ""
                     echo "Options:"
                     echo "  --file <path>   Output file (required)"
@@ -314,12 +316,12 @@ GPGEOF
 
         if [ -z "$outfile" ]; then
             echo "Error: --file is required"
-            echo "Usage: agent-sandbox gpg-export --file <path>"
+            echo "Usage: workcell gpg-export --file <path>"
             exit 1
         fi
 
         ensure_docker_running
-        docker run --rm --entrypoint bash -v agent-sandbox:/data local/agent-sandbox \
+        docker run --rm --entrypoint bash -v "${WORKCELL_VOLUME_NAME}:/data" "$WORKCELL_IMAGE_NAME" \
             -c 'gpg --homedir /data/.gnupg --no-permission-warning --export-secret-keys --armor 2>/dev/null' > "$outfile"
 
         if [ ! -s "$outfile" ]; then
@@ -342,7 +344,7 @@ GPGEOF
                     echo "Import a GPG key into the sandbox"
                     echo ""
                     echo "Usage:"
-                    echo "  agent-sandbox gpg-import --file <key-file>"
+                    echo "  workcell gpg-import --file <key-file>"
                     echo ""
                     echo "Options:"
                     echo "  --file <path>   Key file to import (required)"
@@ -354,7 +356,7 @@ GPGEOF
 
         if [ -z "$infile" ]; then
             echo "Error: --file is required"
-            echo "Usage: agent-sandbox gpg-import --file <key-file>"
+            echo "Usage: workcell gpg-import --file <key-file>"
             exit 1
         fi
 
@@ -364,7 +366,7 @@ GPGEOF
         fi
 
         ensure_docker_running
-        docker run --rm -i --entrypoint bash -v agent-sandbox:/data local/agent-sandbox \
+        docker run --rm -i --entrypoint bash -v "${WORKCELL_VOLUME_NAME}:/data" "$WORKCELL_IMAGE_NAME" \
             -c '
                 gpg --homedir /data/.gnupg --no-permission-warning --import && \
                 fpr=$(gpg --homedir /data/.gnupg --no-permission-warning --list-keys --with-colons 2>/dev/null | grep "^fpr" | head -1 | cut -d: -f10) && \
@@ -386,7 +388,7 @@ GPGEOF
                     echo "Generate a revocation certificate for the sandbox GPG key"
                     echo ""
                     echo "Usage:"
-                    echo "  agent-sandbox gpg-revoke --file <path>"
+                    echo "  workcell gpg-revoke --file <path>"
                     echo ""
                     echo "Options:"
                     echo "  --file <path>   Output file (required)"
@@ -401,21 +403,20 @@ GPGEOF
 
         if [ -z "$outfile" ]; then
             echo "Error: --file is required"
-            echo "Usage: agent-sandbox gpg-revoke --file <path>"
+            echo "Usage: workcell gpg-revoke --file <path>"
             exit 1
         fi
 
         ensure_docker_running
-
         # Resolve to absolute path and mount the parent directory
         outdir="$(cd "$(dirname "$outfile")" && pwd)"
         outname="$(basename "$outfile")"
 
         docker run --rm -it --entrypoint bash \
-            -v agent-sandbox:/data \
+            -v "${WORKCELL_VOLUME_NAME}:/data" \
             -v "$outdir:/output" \
             -e "OUTNAME=$outname" \
-            local/agent-sandbox \
+            "$WORKCELL_IMAGE_NAME" \
             -c '
                 key_id=$(gpg --homedir /data/.gnupg --no-permission-warning --list-keys --keyid-format long 2>/dev/null | grep -oP "(?<=ed25519/)[A-F0-9]+" | head -1)
                 if [ -z "$key_id" ]; then
@@ -441,7 +442,7 @@ GPGEOF
             echo "Erase the sandbox GPG key"
             echo ""
             echo "Usage:"
-            echo "  agent-sandbox gpg-erase"
+            echo "  workcell gpg-erase"
             echo ""
             echo "This permanently deletes all GPG keys from the sandbox volume."
             echo "A new key will be generated on the next launch if GPG_SIGNING is enabled."
@@ -452,7 +453,7 @@ GPGEOF
         case "$confirm" in
             y|Y)
                 ensure_docker_running
-                docker run --rm --entrypoint bash -v agent-sandbox:/data local/agent-sandbox \
+                docker run --rm --entrypoint bash -v "${WORKCELL_VOLUME_NAME}:/data" "$WORKCELL_IMAGE_NAME" \
                     -c 'rm -rf /data/.gnupg/* && echo "GPG keys erased."'
                 ;;
             *)
@@ -467,7 +468,7 @@ GPGEOF
             echo "Open a shell in the sandbox volume"
             echo ""
             echo "Usage:"
-            echo "  agent-sandbox volume-shell"
+            echo "  workcell volume-shell"
             echo ""
             echo "Opens an interactive shell in the sandbox Docker volume"
             echo "for inspecting or modifying its contents."
@@ -475,7 +476,7 @@ GPGEOF
         fi
 
         ensure_docker_running
-        docker run --rm -it -v agent-sandbox:/data -w /data alpine sh
+        docker run --rm -it -v "${WORKCELL_VOLUME_NAME}:/data" -w /data alpine sh
         ;;
 
     volume-backup)
@@ -488,7 +489,7 @@ GPGEOF
                     echo "Backup the sandbox volume to a file"
                     echo ""
                     echo "Usage:"
-                    echo "  agent-sandbox volume-backup --file <path>"
+                    echo "  workcell volume-backup --file <path>"
                     echo ""
                     echo "Options:"
                     echo "  --file <path>   Output file (required, .tgz)"
@@ -500,16 +501,15 @@ GPGEOF
 
         if [ -z "$outfile" ]; then
             echo "Error: --file is required"
-            echo "Usage: agent-sandbox volume-backup --file <path>"
+            echo "Usage: workcell volume-backup --file <path>"
             exit 1
         fi
 
         ensure_docker_running
-
         outdir="$(cd "$(dirname "$outfile")" && pwd)"
         outname="$(basename "$outfile")"
 
-        docker run --rm -v agent-sandbox:/data -v "$outdir:/backup" alpine \
+        docker run --rm -v "${WORKCELL_VOLUME_NAME}:/data" -v "$outdir:/backup" alpine \
             tar -czf "/backup/$outname" -C /data .
 
         echo "Volume backed up to: $outfile"
@@ -525,7 +525,7 @@ GPGEOF
                     echo "Restore the sandbox volume from a backup"
                     echo ""
                     echo "Usage:"
-                    echo "  agent-sandbox volume-restore --file <path>"
+                    echo "  workcell volume-restore --file <path>"
                     echo ""
                     echo "Options:"
                     echo "  --file <path>   Backup file to restore (required, .tgz)"
@@ -539,7 +539,7 @@ GPGEOF
 
         if [ -z "$infile" ]; then
             echo "Error: --file is required"
-            echo "Usage: agent-sandbox volume-restore --file <path>"
+            echo "Usage: workcell volume-restore --file <path>"
             exit 1
         fi
 
@@ -558,11 +558,10 @@ GPGEOF
         esac
 
         ensure_docker_running
-
         indir="$(cd "$(dirname "$infile")" && pwd)"
         inname="$(basename "$infile")"
 
-        docker run --rm -v agent-sandbox:/data -v "$indir:/backup" alpine \
+        docker run --rm -v "${WORKCELL_VOLUME_NAME}:/data" -v "$indir:/backup" alpine \
             sh -c "rm -rf /data/* /data/.[!.]* /data/..?* 2>/dev/null; tar -xzf /backup/$inname -C /data"
 
         echo "Volume restored from: $infile"
@@ -574,7 +573,7 @@ GPGEOF
             echo "Remove the sandbox volume"
             echo ""
             echo "Usage:"
-            echo "  agent-sandbox volume-rm"
+            echo "  workcell volume-rm"
             echo ""
             echo "Permanently deletes the sandbox Docker volume and all its data"
             echo "(credentials, settings, GPG keys, installed tools, etc.)."
@@ -586,8 +585,8 @@ GPGEOF
         case "$confirm" in
             y|Y)
                 ensure_docker_running
-                docker volume rm agent-sandbox
-                echo "Volume 'agent-sandbox' removed."
+                docker volume rm "$WORKCELL_VOLUME_NAME"
+                echo "Volume '$WORKCELL_VOLUME_NAME' removed."
                 ;;
             *)
                 echo "Aborted."
@@ -601,7 +600,7 @@ GPGEOF
             echo "Open an agent's config file in vi (inside the sandbox volume)"
             echo ""
             echo "Usage:"
-            echo "  agent-sandbox settings <agent>"
+            echo "  workcell settings <agent>"
             echo ""
             echo "Agents (required):"
             echo "  claude    ~/.claude/settings.json"
@@ -613,7 +612,7 @@ GPGEOF
 
         if [ -z "${1:-}" ]; then
             echo "Error: agent is required (expected 'claude', 'opencode', or 'codex')"
-            echo "Usage: agent-sandbox settings <agent>"
+            echo "Usage: workcell settings <agent>"
             exit 1
         fi
 
@@ -621,7 +620,7 @@ GPGEOF
         ensure_docker_running
         case "$settings_agent" in
             claude)
-                docker run --rm -it --entrypoint sh -v agent-sandbox:/data local/agent-sandbox -lc '
+                docker run --rm -it --entrypoint sh -v "${WORKCELL_VOLUME_NAME}:/data" "$WORKCELL_IMAGE_NAME" -lc '
                     mkdir -p /data/.claude
                     chown -R agent:agent /data/.claude
                     [ -f /data/.claude/settings.json ] || printf "{}\n" > /data/.claude/settings.json
@@ -630,7 +629,7 @@ GPGEOF
                 '
                 ;;
             opencode)
-                docker run --rm -it --entrypoint sh -v agent-sandbox:/data local/agent-sandbox -lc '
+                docker run --rm -it --entrypoint sh -v "${WORKCELL_VOLUME_NAME}:/data" "$WORKCELL_IMAGE_NAME" -lc '
                     mkdir -p /data/.config/opencode
                     chown -R agent:agent /data/.config/opencode
                     if [ -f /data/.config/opencode/opencode.jsonc ]; then
@@ -650,7 +649,7 @@ EOF
                 '
                 ;;
             codex)
-                docker run --rm -it --entrypoint sh -v agent-sandbox:/data local/agent-sandbox -lc '
+                docker run --rm -it --entrypoint sh -v "${WORKCELL_VOLUME_NAME}:/data" "$WORKCELL_IMAGE_NAME" -lc '
                     mkdir -p /data/.codex
                     chown -R agent:agent /data/.codex
                     settings_path=/data/.codex/config.toml
@@ -674,10 +673,10 @@ EOF
             echo "Export opencode sessions for the current workspace to a local backup"
             echo ""
             echo "Usage:"
-            echo "  agent-sandbox opencode-sessions-export"
+            echo "  workcell opencode-sessions-export"
             echo ""
             echo "Writes one JSON file per session (keyed by session ID) to"
-            echo ".agent-sandbox/opencode-sessions/ in the current workspace."
+            echo ".workcell/opencode-sessions/ in the current workspace."
             echo ""
             echo "Sessions are auto-scoped to the current workspace: opencode derives"
             echo "the project ID from the git root-commit SHA, or uses \"global\" for"
@@ -687,9 +686,8 @@ EOF
         fi
 
         ensure_docker_running
-
         project_name="${PWD##*/}"
-        output_dir="$(pwd)/.agent-sandbox/opencode-sessions"
+        output_dir="$(pwd)/.workcell/opencode-sessions"
         mkdir -p "$output_dir"
 
         # Use --user agent to write as uid 1000 (matches volume ownership).
@@ -699,10 +697,10 @@ EOF
         docker run --rm --entrypoint sh \
             --user agent \
             -e HOME=/home/agent \
-            -v agent-sandbox:/home/agent/persist \
+            -v "${WORKCELL_VOLUME_NAME}:/home/agent/persist" \
             -v "$(pwd):/workspaces/${project_name}" \
             -w "/workspaces/${project_name}" \
-            local/agent-sandbox -c '
+            "$WORKCELL_IMAGE_NAME" -c '
                 set -e
                 export PATH="/home/agent/.local/bin:$PATH"
                 ids=$(opencode session list --format json 2>/dev/null | jq -r ".[].id")
@@ -712,10 +710,10 @@ EOF
                 fi
                 count=0
                 for id in $ids; do
-                    opencode export "$id" > ".agent-sandbox/opencode-sessions/$id.json"
+                    opencode export "$id" > ".workcell/opencode-sessions/$id.json"
                     count=$((count + 1))
                 done
-                echo "Exported $count session(s) to .agent-sandbox/opencode-sessions/"
+                echo "Exported $count session(s) to .workcell/opencode-sessions/"
             '
         ;;
 
@@ -725,9 +723,9 @@ EOF
             echo "Import opencode sessions from a workspace backup"
             echo ""
             echo "Usage:"
-            echo "  agent-sandbox opencode-sessions-import"
+            echo "  workcell opencode-sessions-import"
             echo ""
-            echo "Imports every .json file under .agent-sandbox/opencode-sessions/"
+            echo "Imports every .json file under .workcell/opencode-sessions/"
             echo "back into opencode's session store. Session IDs and project"
             echo "scoping are preserved from the JSON, so sessions restore to"
             echo "their original workspace as long as the git root-commit SHA"
@@ -737,30 +735,29 @@ EOF
         fi
 
         ensure_docker_running
-
         project_name="${PWD##*/}"
-        input_dir="$(pwd)/.agent-sandbox/opencode-sessions"
+        input_dir="$(pwd)/.workcell/opencode-sessions"
         if [ ! -d "$input_dir" ] || [ -z "$(ls -A "$input_dir"/*.json 2>/dev/null)" ]; then
-            echo "No session files found in .agent-sandbox/opencode-sessions/"
+            echo "No session files found in .workcell/opencode-sessions/"
             exit 0
         fi
 
         docker run --rm --entrypoint sh \
             --user agent \
             -e HOME=/home/agent \
-            -v agent-sandbox:/home/agent/persist \
+            -v "${WORKCELL_VOLUME_NAME}:/home/agent/persist" \
             -v "$(pwd):/workspaces/${project_name}" \
             -w "/workspaces/${project_name}" \
-            local/agent-sandbox -c '
+            "$WORKCELL_IMAGE_NAME" -c '
                 set -e
                 export PATH="/home/agent/.local/bin:$PATH"
                 count=0
-                for f in .agent-sandbox/opencode-sessions/*.json; do
+                for f in .workcell/opencode-sessions/*.json; do
                     [ -e "$f" ] || continue
                     opencode import "$f" >/dev/null
                     count=$((count + 1))
                 done
-                echo "Imported $count session(s) from .agent-sandbox/opencode-sessions/"
+                echo "Imported $count session(s) from .workcell/opencode-sessions/"
             '
         ;;
 

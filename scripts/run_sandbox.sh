@@ -1,7 +1,11 @@
 #!/bin/bash
-# Agent Sandbox - runs in Docker with current directory mounted
+# Agent Workcell - runs in Docker with current directory mounted
 
 set -e
+
+WORKCELL_DIR_NAME=".workcell"
+WORKCELL_VOLUME_NAME="agent-workcell"
+WORKCELL_IMAGE_NAME="local/agent-workcell"
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -67,16 +71,18 @@ if $yolo; then
   esac
 fi
 
-# .agent-sandbox/ is the workspace-local home for project-scoped sandbox state.
 project_name="${PWD##*/}"
-workspace_sandbox_dir="$(pwd)/.agent-sandbox"
-tasks_dir="${workspace_sandbox_dir}/tasks"
+workspace_root="$(pwd)"
+workspace_workcell_dir="${workspace_root}/${WORKCELL_DIR_NAME}"
+tasks_dir="${workspace_workcell_dir}/tasks"
 session_mount_args=()
-mkdir -p "$workspace_sandbox_dir" "$tasks_dir"
+
+mkdir -p "$workspace_workcell_dir" "$tasks_dir"
+
 case "$agent_cli" in
   claude)
-    legacy_session_host_dir="$(pwd)/.agent-sessions/claude"
-    session_host_dir="${workspace_sandbox_dir}/claude-sessions"
+    legacy_session_host_dir="${workspace_root}/.agent-sessions/claude"
+    session_host_dir="${workspace_workcell_dir}/claude-sessions"
     if [ ! -e "$session_host_dir" ] && [ -d "$legacy_session_host_dir" ]; then
       mv "$legacy_session_host_dir" "$session_host_dir"
     fi
@@ -86,10 +92,10 @@ case "$agent_cli" in
     )
     ;;
   opencode)
-    mkdir -p "${workspace_sandbox_dir}/opencode-sessions"
+    mkdir -p "${workspace_workcell_dir}/opencode-sessions"
     ;;
   codex)
-    codex_session_dir="${workspace_sandbox_dir}/codex-sessions"
+    codex_session_dir="${workspace_workcell_dir}/codex-sessions"
     mkdir -p "${codex_session_dir}/sessions" "${codex_session_dir}/archived_sessions"
     # Codex's Linux sandbox protects a missing project-root `.codex` path by
     # masking it, which can leave behind a zero-byte read-only file on the host.
@@ -109,7 +115,7 @@ case "$agent_cli" in
     ;;
 esac
 
-container_name="agent-sandbox-$$"
+container_name="agent-workcell-$$"
 
 # Source config.sh if it exists (required for Chrome integration)
 if [ -f "$REPO_ROOT/config.sh" ]; then
@@ -194,9 +200,9 @@ fi
 docker_args=(
   --rm -it --init
   --name "$container_name"
-  -v "$(pwd):/workspaces/${project_name}"
+  -v "${workspace_root}:/workspaces/${project_name}"
   -w "/workspaces/${project_name}"
-  -v agent-sandbox:/home/agent/persist
+  -v "${WORKCELL_VOLUME_NAME}:/home/agent/persist"
   -e TERM=xterm-256color
   -e "AGENT_CLI=${agent_cli}"
   --add-host=host.docker.internal:host-gateway
@@ -264,7 +270,7 @@ fi
 # The watchdog ignores SIGHUP and is disowned from bash's job table, so it
 # survives terminal close on both macOS and Linux.
 
-docker run -d "${docker_args[@]}" local/agent-sandbox $yolo_flag "${args[@]}" >/dev/null
+docker run -d "${docker_args[@]}" "$WORKCELL_IMAGE_NAME" $yolo_flag "${args[@]}" >/dev/null
 
 # Spawn watchdog immune to SIGHUP
 ( trap '' HUP

@@ -1,7 +1,7 @@
 #!/bin/bash
-# Start Chrome with remote debugging enabled for Agent Sandbox connection
+# Start Chrome with remote debugging enabled for Agent Workcell connection
 #
-# Run this script on your Mac BEFORE starting the Agent Sandbox.
+# Run this script on your Mac BEFORE starting the Agent Workcell.
 # The sandbox will connect to Chrome via CDP (Chrome DevTools Protocol).
 #
 # Configuration (REQUIRED):
