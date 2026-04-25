@@ -2,6 +2,7 @@
 # Agent Workcell CLI
 #
 # Usage:
+#   workcell build [options]         Build/rebuild the sandbox image
 #   workcell run [agent] [options]   Run the sandbox in current directory
 #                                          (agent: claude [default] | opencode | codex)
 #   workcell start-chrome [options]  Start Chrome with remote debugging
@@ -46,6 +47,7 @@ Usage:
   workcell <command> [options]
 
 Commands:
+  build           Build/rebuild the sandbox image
   run [agent]     Run the sandbox in current directory (default: claude)
                   agent: claude | opencode | codex
   start-chrome    Start Chrome with remote debugging (run on host)
@@ -66,6 +68,7 @@ Commands:
   help            Show this help message
 
 Examples:
+  workcell build
   workcell run
   workcell run claude --yolo --with-chrome --port 3000
   workcell run opencode --yolo
@@ -121,6 +124,23 @@ Examples:
   workcell run claude --yolo --with-chrome --port 3000
   workcell run opencode --port 3000 --port 5173
   workcell run codex --yolo --port 3000
+EOF
+}
+
+show_build_help() {
+    cat << 'EOF'
+Build or rebuild the Agent Workcell Docker image
+
+Usage:
+  workcell build [docker-compose-build-args]
+
+Examples:
+  workcell build
+  workcell build --no-cache
+
+Notes:
+  Runs `docker compose build` from the workcell repository root, so it works
+  even if you invoke `workcell` from another directory.
 EOF
 }
 
@@ -202,6 +222,19 @@ EOF
 command="${1:-}"
 
 case "$command" in
+    build)
+        shift
+
+        if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+            show_build_help
+            exit 0
+        fi
+
+        ensure_docker_running
+        cd "$SCRIPT_DIR"
+        exec docker compose build "$@"
+        ;;
+
     run|"")
         # Default command: run sandbox
         shift 2>/dev/null || true
