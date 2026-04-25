@@ -15,13 +15,7 @@ capabilities and constraints.
 
 ## Setup
 
-### 1. Build the `agent-workcell` image
-
-```bash
-docker compose build
-```
-
-### 2. Add the shell alias
+### 1. Add the shell alias
 
 Add this to your `~/.zshrc`:
 
@@ -36,6 +30,16 @@ Then reload your shell:
 ```bash
 source ~/.zshrc
 ```
+
+### 2. Build the `agent-workcell` image
+
+```bash
+workcell build
+```
+
+This runs `docker compose build` from the workcell repository root, so it works even when you invoke
+`workcell` from another directory. Rebuilding also refreshes the bundled agent TUIs in the image to
+their latest releases.
 
 ### 3. Authenticate (first time only)
 
