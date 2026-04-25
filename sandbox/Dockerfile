@@ -62,9 +62,9 @@ RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | b
 # Install Claude Code using the official native installer
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
-# Add Claude, Cargo, and Node to PATH (using symlinked current node)
-# Activate Python venv globally so all packages are available via `python3`
-ENV PATH="/home/agent/.local/python-venv/bin:/home/agent/.nvm/current/bin:/home/agent/.cargo/bin:/home/agent/.local/bin:${PATH}"
+# Prefer image-baked tools over volume-backed npm globals on PATH.
+# Activate Python venv globally so all packages are available via `python3`.
+ENV PATH="/home/agent/.local/python-venv/bin:/home/agent/.local/bin:/home/agent/.nvm/current/bin:/home/agent/.cargo/bin:${PATH}"
 ENV VIRTUAL_ENV="/home/agent/.local/python-venv"
 
 # Install Python packages: browser tools (Playwright), linters (pyright, ruff),
