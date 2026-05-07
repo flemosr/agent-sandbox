@@ -1,0 +1,88 @@
+import os
+import subprocess
+import tempfile
+import unittest
+from pathlib import Path
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+RUN_SANDBOX = REPO_ROOT / "scripts" / "run_sandbox.sh"
+
+
+class RunSandboxEnvTests(unittest.TestCase):
+    def run_with_fake_docker(self, workspace: Path, env_file: str | None = None) -> str:
+        fake_bin = workspace / "bin"
+        fake_bin.mkdir()
+        docker_log = workspace / "docker.log"
+        fake_docker = fake_bin / "docker"
+        fake_docker.write_text(
+            "#!/bin/bash\n"
+            "printf 'DOCKER' >> \"$DOCKER_LOG\"\n"
+            "for arg in \"$@\"; do printf '\\t%s' \"$arg\" >> \"$DOCKER_LOG\"; done\n"
+            "printf '\\n' >> \"$DOCKER_LOG\"\n",
+            encoding="utf-8",
+        )
+        fake_docker.chmod(0o755)
+        fake_touch = fake_bin / "touch"
+        fake_touch.write_text("#!/bin/bash\nexit 0\n", encoding="utf-8")
+        fake_touch.chmod(0o755)
+
+        workcell_dir = workspace / ".workcell"
+        workcell_dir.mkdir(exist_ok=True)
+        if env_file is not None:
+            (workcell_dir / ".env").write_text(env_file, encoding="utf-8")
+
+        env = os.environ.copy()
+        env["DOCKER_LOG"] = str(docker_log)
+        env["PATH"] = f"{fake_bin}{os.pathsep}{env['PATH']}"
+
+        subprocess.run(
+            [str(RUN_SANDBOX), "codex", "--", "status"],
+            cwd=workspace,
+            env=env,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        )
+        return docker_log.read_text(encoding="utf-8")
+
+    def test_env_file_is_passed_to_docker_run(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = Path(temp_dir)
+            docker_log = self.run_with_fake_docker(
+                workspace,
+                "CUSTOM=value\nQUOTED=\"value with spaces\"\n",
+            )
+
+            run_line = next(line for line in docker_log.splitlines() if line.startswith("DOCKER\trun\t"))
+            self.assertIn("\t-e\tCUSTOM=value\t", f"{run_line}\t")
+            self.assertIn("\t-e\tQUOTED=value with spaces\t", f"{run_line}\t")
+            self.assertLess(run_line.index("CUSTOM=value"), run_line.index("AGENT_CLI=codex"))
+
+    def test_gitignore_is_seeded_with_env_entry(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = Path(temp_dir)
+            self.run_with_fake_docker(workspace)
+
+            self.assertEqual(
+                (workspace / ".workcell" / ".gitignore").read_text(encoding="utf-8"),
+                ".DS_Store\n.env\nflutter-config.json\nartifacts/\n",
+            )
+
+    def test_existing_gitignore_gets_env_entry(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = Path(temp_dir)
+            workcell_dir = workspace / ".workcell"
+            workcell_dir.mkdir()
+            (workcell_dir / ".gitignore").write_text("artifacts/", encoding="utf-8")
+            self.run_with_fake_docker(workspace)
+
+            self.assertEqual(
+                (workspace / ".workcell" / ".gitignore").read_text(encoding="utf-8"),
+                "artifacts/\n.env\n",
+            )
+
+
+if __name__ == "__main__":
+    unittest.main()
