@@ -28,6 +28,7 @@ Two kinds of data persist between sessions:
 Project-specific workcell data lives under `.workcell/`:
 
 - `.workcell/artifacts/` - temporary artifacts from agent work, such as screenshots, logs, traces, and generated previews. Agents may create optional subdirectories such as `screenshots/`, `logs/`, and `mockups/` when that helps organize related files. Put throwaway files here instead of the repo root.
+- `.workcell/.env` - optional workspace-local environment variables loaded into sandboxed agent sessions. Treat it as secret-bearing and leave it ignored by Git.
 - `.workcell/tasks/` - shared task notes for multi-step work and handoffs.
 - `.workcell/flutter-config.json` - Flutter bridge launch settings and runtime connection details when Flutter integration is used.
 

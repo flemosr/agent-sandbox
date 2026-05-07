@@ -269,6 +269,7 @@ Each project gets a `.workcell/` directory for project-scoped agent state:
 - `.workcell/claude-sessions/` - bind-mounted Claude project sessions.
 - `.workcell/opencode-sessions/` - exported OpenCode session backups.
 - `.workcell/codex-sessions/` - workspace-local Codex conversation files.
+- `.workcell/.env` - optional workspace-local environment variables to define for sandboxed agents.
 - `.workcell/tasks/` - multi-agent task files and scratch notes.
 - `.workcell/flutter-config.json` - project-local Flutter bridge launch and connection settings
   when Flutter integration is used.
@@ -278,6 +279,7 @@ Example `.workcell/` layout:
 ```text
 .workcell/
 ├── .gitignore
+├── .env
 ├── artifacts/
 │   ├── screenshots/
 │   ├── logs/
@@ -293,9 +295,16 @@ On first run, the launcher creates `.workcell/.gitignore` if it does not already
 
 ```gitignore
 .DS_Store
+.env
 flutter-config.json
 artifacts/
 ```
+
+When `.workcell/.env` exists, `workcell run <agent>` parses it as dotenv-style `KEY=VALUE`
+entries and passes the values into the sandboxed agent environment. Blank lines and comments are
+ignored, `export KEY=VALUE` is accepted, quoted values are unquoted, and invalid lines stop the
+launch with an error. Launcher-controlled variables such as the selected agent, timezone, exposed
+ports, and integration settings take precedence over duplicate names in `.workcell/.env`.
 
 It is recommended to gitignore `.workcell/` in the parent project repository. If you want version
 control for local agent state, initialize a separate Git repository inside `.workcell/`.
