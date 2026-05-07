@@ -119,13 +119,19 @@ workspace_workcell_dir="${workspace_root}/${WORKCELL_DIR_NAME}"
 artifacts_dir="${workspace_workcell_dir}/artifacts"
 tasks_dir="${workspace_workcell_dir}/tasks"
 workcell_gitignore="${workspace_workcell_dir}/.gitignore"
+workcell_env_file="${workspace_workcell_dir}/.env"
 session_mount_args=()
 
 mkdir -p "$workspace_workcell_dir" "$artifacts_dir" "$tasks_dir"
 # Seed project-local ignores once for generated workcell artifacts and runtime config.
 # Do not overwrite the file because users may intentionally version task notes or sessions.
 if [ ! -e "$workcell_gitignore" ]; then
-  printf '.DS_Store\nflutter-config.json\nartifacts/\n' > "$workcell_gitignore"
+  printf '.DS_Store\n.env\nflutter-config.json\nartifacts/\n' > "$workcell_gitignore"
+elif ! grep -qxF '.env' "$workcell_gitignore"; then
+  if [ -s "$workcell_gitignore" ] && [ "$(tail -c 1 "$workcell_gitignore")" != "" ]; then
+    printf '\n' >> "$workcell_gitignore"
+  fi
+  printf '.env\n' >> "$workcell_gitignore"
 fi
 
 case "$agent_cli" in
@@ -165,6 +171,15 @@ case "$agent_cli" in
 esac
 
 container_name="agent-workcell-$$"
+workcell_env_args=()
+
+if [ -f "$workcell_env_file" ]; then
+  workcell_env_entries="$(python3 "$SCRIPT_DIR/workcell_env.py" "$workcell_env_file")"
+  while IFS= read -r env_entry; do
+    [ -n "$env_entry" ] || continue
+    workcell_env_args+=(-e "$env_entry")
+  done <<< "$workcell_env_entries"
+fi
 
 # Source config.sh if it exists (required for Chrome integration)
 if [ -f "$REPO_ROOT/config.sh" ]; then
@@ -427,6 +442,7 @@ docker_args=(
   -v "${workspace_root}:/workspaces/${project_name}"
   -w "/workspaces/${project_name}"
   -v "${WORKCELL_VOLUME_NAME}:/home/agent/persist"
+  "${workcell_env_args[@]}"
   -e TERM=xterm-256color
   -e "AGENT_CLI=${agent_cli}"
   --add-host=host.docker.internal:host-gateway
