@@ -78,6 +78,13 @@ Run from the host Flutter project directory:
 workcell run claude --with-flutter
 ```
 
+If the Flutter project is in a workspace subdirectory, pass the project path relative to the
+workspace root:
+
+```bash
+workcell run codex --with-flutter --flutter-project-dir ./gui
+```
+
 This automatically:
 
 1. Starts a Flutter host bridge HTTP server on the selected port.
@@ -111,6 +118,7 @@ workcell start-flutter-bridge
 
 # Override bridge settings
 workcell start-flutter-bridge --port 8766 --project ~/my-flutter-app
+workcell start-flutter-bridge --flutter-project-dir ./gui
 ```
 
 Then run the workcell without `--with-flutter`. The launcher writes connection details to

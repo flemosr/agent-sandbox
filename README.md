@@ -117,7 +117,8 @@ The first positional arg after `run` selects the agent and is required: `claude`
 
 `--with-chrome` and `--with-flutter` are mutually exclusive. `--port` exposes container dev
 servers to the host in all modes. In Flutter mode, use `--bridge-port` to select the host Flutter
-bridge port.
+bridge port. If the Flutter project is in a workspace subdirectory, pass
+`--flutter-project-dir ./gui`.
 
 `--yolo` maps to each agent's native bypass:
 
@@ -153,11 +154,13 @@ workcell start-chrome --port 9333 --profile "Profile 1"
 # Flutter native/device bridge
 workcell run claude --with-flutter
 workcell run codex --with-flutter --bridge-port 8765
+workcell run codex --with-flutter --flutter-project-dir ./gui
 workcell run codex --with-flutter --bridge-port 8766 --port 3000
 
 # Start the Flutter bridge independently on the host
 workcell start-flutter-bridge
 workcell start-flutter-bridge --port 8766 --project ~/my-flutter-app
+workcell start-flutter-bridge --flutter-project-dir ./gui
 ```
 
 See [Chrome integration](docs/chrome-integration.md) and

@@ -68,6 +68,7 @@ If `$EXPOSED_PORTS` is set, dev servers on those ports are reachable from the ho
 
 - Chrome mode uses `--port` to expose container dev-server ports to host Chrome.
 - Flutter mode uses `--bridge-port` to select the host Flutter bridge port; `--port` still exposes container dev-server ports.
+- Flutter mode uses `--flutter-project-dir <dir>` when the Flutter project is in a workspace subdirectory such as `./gui`.
 
 ## Network Restrictions
 

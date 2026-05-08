@@ -73,6 +73,7 @@ If the bridge is unavailable, tell the user they can either run `workcell start-
 If the bridge is reachable but running stale bridge code, use `flutterctl restart-bridge`. This authenticated command re-execs the existing host bridge process with the same launch settings.
 
 `--with-flutter` and `--with-chrome` are mutually exclusive. In Flutter mode, `--bridge-port <port>` selects the host Flutter bridge port and `--port <port>` exposes a container dev-server port.
+If the Flutter project lives in a workspace subdirectory, launch with `--flutter-project-dir <dir>`, such as `--flutter-project-dir ./gui`.
 
 Connection details and optional launch settings live in `.workcell/flutter-config.json`:
 
@@ -85,6 +86,7 @@ The file may include project-local launch settings such as:
 ```json
 {
   "target": "lib/main_dev.dart",
+  "flutter_project_dir": "./gui",
   "run_args": ["--flavor", "staging", "--dart-define", "API_BASE_URL=https://api.example.test"]
 }
 ```
