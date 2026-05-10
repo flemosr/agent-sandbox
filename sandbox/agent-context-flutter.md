@@ -44,10 +44,10 @@ These commands run directly in the container without the Flutter bridge. Run the
 against the workspace project (`pubspec.yaml` in scope) before and after editing
 Dart source.
 
-The `dart` binary is available alongside `flutter`. Both are on `PATH`. The
-container exposes workcell wrappers for `flutter` and `dart`; they repair
-host-generated `.dart_tool/package_config.json` metadata with `flutter pub get`
-before delegating to the real SDK binaries when needed.
+The `dart` binary is available alongside `flutter`. Both are on `PATH` from the
+image-owned SDK under `/opt/flutter-sdk`. The container exposes workcell wrappers
+for `flutter` and `dart`; they repair host-generated `.dart_tool/package_config.json`
+metadata with `flutter pub get` before delegating to the real SDK binaries when needed.
 
 Downloaded pub packages are cached in `~/.pub-cache/` which persists in the Docker
 volume across container restarts.

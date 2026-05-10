@@ -243,7 +243,7 @@ User-level data is stored in a Docker volume named `agent-workcell`, mounted at
 
 Important persisted paths include:
 
-- `~/.claude/` - Claude Code credentials, settings, global context, and install state.
+- `~/.claude/` - Claude Code credentials, settings, and global context.
 - `~/.config/opencode/` - OpenCode configuration and global context.
 - `~/.local/state/opencode/` - OpenCode local UI state.
 - `~/.local/share/opencode/` - OpenCode auth, logs, database, and storage.
@@ -251,12 +251,13 @@ Important persisted paths include:
 - `~/.rustup/` and `~/.cargo/` - Rust toolchains, registry cache, and installed binaries.
 - `~/.gnupg/` - GPG keys for commit signing when enabled.
 - `~/.nvm/` - Node.js versions and global npm packages.
-- `~/persist/.flutter-sdk/` - Flutter SDK (seeded from image on first run; `flutter` and `dart` on PATH).
-- `~/.pub-cache/` - Dart pub package cache shared across projects.
 - `~/.flutter/` - Flutter CLI config and version state.
+- `~/.pub-cache/` - Dart pub package cache shared across projects.
 
-The entrypoint sets up symlinks and seeds toolchain templates on first run so each tool sees its
-expected home directory paths.
+Image-owned tool binaries and SDKs, including Flutter under `/opt/flutter-sdk`, Claude Code
+version payloads, OpenCode, and protobuf CLIs, update with the sandbox image. The entrypoint sets
+up symlinks so each tool still sees its expected home directory paths without using stale persisted
+binary copies.
 
 > **Security note.** Agent credentials are stored as plaintext inside the Docker volume. Treat the
 > `agent-workcell` volume and its backups as sensitive.
@@ -327,6 +328,7 @@ JSON files before removing the volume. See [OpenCode sessions](#opencode-session
 | **Browser** | Chrome automation support |
 | **Flutter SDK** | `flutter`, `dart` — tests, analysis, formatting, pub (in-container, no host setup) |
 | **Flutter Bridge** | `flutterctl` — launch, hot-reload, screenshots, and macOS-hosted macOS/iOS Simulator UI automation via host bridge |
+| **Protobuf** | `protoc`, `buf`, `protoc-gen-dart`, `protoc-gen-prost`, `grpcurl` |
 | **Database** | `psql` |
 | **Utilities** | `git`, `curl`, `wget`, `jq`, `yq`, `ripgrep`, `fd` |
 

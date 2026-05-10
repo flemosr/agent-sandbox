@@ -45,14 +45,13 @@ Important persisted user paths:
 - `~/.nvm/` - Node.js versions and global npm packages.
 - `~/.rustup/` and `~/.cargo/` - Rust toolchains, registry cache, installed binaries, and config.
 - `~/.gnupg/` - GPG keys for commit signing when enabled.
-- `~/persist/.flutter-sdk/` - Flutter SDK (`flutter` and `dart` on PATH, seeded from image on first run).
 - `~/.pub-cache/` - Dart pub package cache shared across projects.
 - `~/.flutter/` - Flutter CLI config and version state.
 - `~/.codex/` - Codex config, auth, sessions, history, and global context.
 - `~/.claude/` - Claude Code credentials, settings, and global context.
 - `~/.config/opencode/` and `~/.local/share/opencode/` - OpenCode config, auth, sessions, logs, and storage.
 
-Installed Node versions, global npm packages, Rust toolchains, and agent upgrades persist across container restarts.
+Installed Node versions, global npm packages, Rust toolchains, and package caches persist across container restarts. Image-owned SDKs and agent binaries update with the sandbox image.
 
 ## Ports And Integrations
 
@@ -97,6 +96,7 @@ When the firewall is active, external network access is limited to essential age
 | Python | `pyright`, `ruff`, `playwright`, `matplotlib`, `numpy` |
 | Browser | `browser` CLI for Chrome automation; read `/opt/agent-context-web.md` before use |
 | Flutter | `flutter` and `dart` for tests, analysis, formatting, and pub; `flutterctl` for the host bridge (launch, hot-reload, screenshots); read `/opt/agent-context-flutter.md` before use |
+| Protobuf | `protoc`, `buf`, `protoc-gen-dart`, `protoc-gen-prost`, `grpcurl` |
 | Database | `psql`; connect to host databases through `host.docker.internal` |
 | Utilities | `git`, `curl`, `wget`, `jq`, `yq`, `ripgrep`, `fd` |
 

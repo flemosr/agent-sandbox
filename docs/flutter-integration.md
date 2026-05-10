@@ -14,7 +14,7 @@ For Flutter web, use [Chrome integration](chrome-integration.md) instead.
 A Flutter SDK is bundled with the container image. Agents can run tests, static analysis,
 formatting, and package management against any workspace project with no host setup required.
 The container puts `flutter` and `dart` on `PATH` through workcell wrappers that delegate to the
-bundled SDK under `~/persist/.flutter-sdk`. Those wrappers automatically repair host-generated
+image-baked SDK under `/opt/flutter-sdk`. Those wrappers automatically repair host-generated
 `.dart_tool/package_config.json` metadata before local SDK commands.
 The rest of this document covers the host bridge for native/device targets.
 
@@ -290,4 +290,4 @@ Common issues:
   available. Run `flutter doctor -v` on the host.
 - Host bridge `flutter: command not found`: set host `FLUTTER_PATH` in `config.sh`.
 - Container `flutter: command not found`: restart with an updated workcell image; the entrypoint
-  re-asserts `~/persist/.flutter-sdk/bin` and workcell wrappers on `PATH`.
+  re-asserts `/opt/flutter-sdk/bin` and workcell wrappers on `PATH`.
