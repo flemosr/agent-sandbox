@@ -3,8 +3,8 @@
 
 set -e
 
-REAL_DART="${WORKCELL_REAL_DART:-/home/agent/persist/.flutter-sdk/bin/dart}"
-REAL_FLUTTER="${WORKCELL_REAL_FLUTTER:-/home/agent/persist/.flutter-sdk/bin/flutter}"
+REAL_DART="${WORKCELL_REAL_DART:-/opt/flutter-sdk/bin/dart}"
+REAL_FLUTTER="${WORKCELL_REAL_FLUTTER:-/opt/flutter-sdk/bin/flutter}"
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
 if [ -x "$REAL_FLUTTER" ]; then

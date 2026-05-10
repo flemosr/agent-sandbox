@@ -3,7 +3,7 @@
 
 set -e
 
-REAL_FLUTTER="${WORKCELL_REAL_FLUTTER:-/home/agent/persist/.flutter-sdk/bin/flutter}"
+REAL_FLUTTER="${WORKCELL_REAL_FLUTTER:-/opt/flutter-sdk/bin/flutter}"
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
 if [ -x "$REAL_FLUTTER" ]; then

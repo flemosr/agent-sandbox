@@ -87,7 +87,7 @@ class PackageConfigGuardTests(unittest.TestCase):
                 "configVersion": 2,
                 "packages": [{
                     "name": "flutter",
-                    "rootUri": "file:///home/agent/persist/.flutter-sdk/packages/flutter",
+                    "rootUri": "file:///opt/flutter-sdk/packages/flutter",
                     "packageUri": "lib/",
                 }],
             }))

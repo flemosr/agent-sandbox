@@ -11,6 +11,8 @@ from urllib.parse import unquote, urlparse
 
 CONTAINER_PREFIXES = (
     "/home/agent/",
+    "/opt/flutter-sdk/",
+    "/opt/flutter-sdk-template/",
     "/workspaces/",
 )
 
@@ -83,7 +85,7 @@ def main():
 
     flutter = os.environ.get(
         "WORKCELL_REAL_FLUTTER",
-        "/home/agent/persist/.flutter-sdk/bin/flutter",
+        "/opt/flutter-sdk/bin/flutter",
     )
     result = subprocess.run(
         [flutter, "pub", "get"],
