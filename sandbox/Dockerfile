@@ -31,6 +31,7 @@ RUN apt-get update && apt-get install -y \
     strace \
     gnupg \
     postgresql-client \
+    protobuf-compiler \
     && rm -rf /var/lib/apt/lists/*
 
 # Install yq
@@ -45,7 +46,7 @@ RUN useradd -m -s /bin/bash agent \
 # Download Flutter SDK to /opt/flutter-sdk-template/ for volume seeding (nvm/Rust pattern).
 # amd64: official tarball; arm64: git clone (no prebuilt arm64 Linux tarball available).
 # First in the file so only a FLUTTER_VERSION bump invalidates this layer.
-ARG FLUTTER_VERSION=3.41.8
+ARG FLUTTER_VERSION=3.41.9
 RUN ARCH=$(dpkg --print-architecture) && \
     if [ "$ARCH" = "amd64" ]; then \
         mkdir -p /opt/flutter-sdk-template && \
@@ -65,8 +66,10 @@ RUN ARCH=$(dpkg --print-architecture) && \
 # Pre-create /opt/ template dirs owned by agent so each installer writes directly
 # there via home symlinks — eliminating the end-of-build cp -a that doubled storage.
 RUN mkdir -p /opt/nvm-template /opt/rustup-template /opt/cargo-template \
+             /opt/pub-cache-template \
              /opt/claude-versions-template /opt/opencode-template \
     && chown agent:agent /opt/nvm-template /opt/rustup-template /opt/cargo-template \
+                          /opt/pub-cache-template \
                           /opt/claude-versions-template /opt/opencode-template
 
 # Switch to agent user; /opt/ template dirs are already chown'd to agent.
@@ -78,6 +81,13 @@ ENV FLUTTER_CLI_ANALYTICS_DISABLED=1
 RUN /opt/flutter-sdk-template/bin/flutter precache \
         --no-android --no-ios --no-fuchsia --no-macos --no-windows --no-web
 
+# Install Dart protobuf generator into a seedable pub cache template.
+ARG PROTOC_PLUGIN_VERSION=25.0.0
+RUN PUB_CACHE=/opt/pub-cache-template \
+    /opt/flutter-sdk-template/bin/dart pub global activate protoc_plugin "${PROTOC_PLUGIN_VERSION}" \
+    && ln -sf /opt/pub-cache-template /home/agent/.pub-cache \
+    && ln -sf /home/agent/.pub-cache/bin/protoc-gen-dart /home/agent/.local/bin/protoc-gen-dart
+
 # Install Rust stable directly into /opt/ templates; symlink home dirs so the
 # build-time PATH (/home/agent/.cargo/bin) resolves correctly.
 ENV RUSTUP_HOME=/opt/rustup-template
@@ -86,11 +96,20 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --de
     && ln -sf /opt/rustup-template /home/agent/.rustup \
     && ln -sf /opt/cargo-template /home/agent/.cargo
 
+# Install Rust protobuf generator as an image-baked global binary.
+ARG PROTOC_GEN_PROST_VERSION=0.5.0
+RUN PATH="/home/agent/.cargo/bin:${PATH}" \
+    /home/agent/.cargo/bin/cargo install \
+        --root /home/agent/.local \
+        --version "${PROTOC_GEN_PROST_VERSION}" \
+        protoc-gen-prost
+
 # Install nvm and Node.js LTS directly into /opt/nvm-template; symlink home dir so
 # $NVM_DIR (/home/agent/.nvm) resolves correctly during the build.
+ARG NVM_VERSION=0.40.4
 ENV NVM_DIR="/home/agent/.nvm"
 RUN ln -sf /opt/nvm-template /home/agent/.nvm \
-    && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash \
+    && curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh" | bash \
     && . /opt/nvm-template/nvm.sh \
     && nvm install --lts \
     && nvm use --lts \
@@ -152,7 +171,8 @@ RUN ARCH=$(dpkg --print-architecture) && \
         arm64) CODEX_ARCH="aarch64-unknown-linux-musl" ;; \
         *) echo "Unsupported architecture for codex: $ARCH" >&2; exit 1 ;; \
     esac && \
-    curl -fsSL "https://github.com/openai/codex/releases/latest/download/codex-${CODEX_ARCH}.tar.gz" \
+    curl --http1.1 --retry 5 --retry-delay 5 --retry-all-errors -fsSL \
+        "https://github.com/openai/codex/releases/latest/download/codex-${CODEX_ARCH}.tar.gz" \
         -o /tmp/codex.tar.gz && \
     tar -xzf /tmp/codex.tar.gz -C /tmp && \
     install -m 0755 "/tmp/codex-${CODEX_ARCH}" /home/agent/.local/bin/codex && \
@@ -175,6 +195,28 @@ RUN mkdir -p /home/agent/persist/.local/share/opencode \
 # Copy scripts (after tool installs to preserve cache)
 USER root
 RUN mkdir -p /workspaces && chown agent:agent /workspaces
+
+# Install release-binary protobuf CLIs late so version bumps do not invalidate
+# expensive Flutter, Rust, Node, Python, or agent install layers.
+ARG BUF_VERSION=1.69.0
+ARG GRPCURL_VERSION=1.9.3
+RUN ARCH=$(dpkg --print-architecture) && \
+    case "$ARCH" in \
+        amd64) BUF_ARCH="x86_64"; GRPCURL_ARCH="x86_64" ;; \
+        arm64) BUF_ARCH="aarch64"; GRPCURL_ARCH="arm64" ;; \
+        *) echo "Unsupported architecture for protobuf tooling: $ARCH" >&2; exit 1 ;; \
+    esac && \
+    curl --http1.1 --retry 5 --retry-delay 5 --retry-all-errors -fsSL \
+        "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/buf-Linux-${BUF_ARCH}" \
+        -o /usr/local/bin/buf && \
+    chmod +x /usr/local/bin/buf && \
+    curl --http1.1 --retry 5 --retry-delay 5 --retry-all-errors -fsSL \
+        "https://github.com/fullstorydev/grpcurl/releases/download/v${GRPCURL_VERSION}/grpcurl_${GRPCURL_VERSION}_linux_${GRPCURL_ARCH}.tar.gz" \
+        -o /tmp/grpcurl.tar.gz && \
+    tar -xzf /tmp/grpcurl.tar.gz -C /tmp grpcurl && \
+    install -m 0755 /tmp/grpcurl /usr/local/bin/grpcurl && \
+    rm -f /tmp/grpcurl.tar.gz /tmp/grpcurl
+
 COPY init-firewall.sh /opt/init-firewall.sh
 COPY entrypoint.sh /opt/entrypoint.sh
 RUN chmod +x /opt/init-firewall.sh /opt/entrypoint.sh
