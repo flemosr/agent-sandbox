@@ -83,6 +83,7 @@ When the firewall is active, external network access is limited to essential age
 - OpenAI / Codex: `api.openai.com`, `chatgpt.com`, `auth.openai.com`
 - OpenCode: `opencode.ai`
 - JavaScript / TypeScript: `registry.npmjs.org`, `npmjs.com`, `yarnpkg.com`, `registry.yarnpkg.com`, `nodejs.org`
+- Dart / Flutter: `pub.dev`
 - Rust: `crates.io`, `static.crates.io`, `index.crates.io`, `doc.rust-lang.org`, `docs.rs`, `static.rust-lang.org`
 - GitHub: `github.com`, `api.github.com`, `raw.githubusercontent.com`, `objects.githubusercontent.com`
 - Other: `storage.googleapis.com`

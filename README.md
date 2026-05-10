@@ -340,6 +340,7 @@ Use `--firewalled` to restrict network access to essential agent and tooling dom
 - OpenAI / Codex
 - OpenCode, including Zen and Go
 - JavaScript and TypeScript package registries
+- Dart and Flutter package registry
 - Rust package registries and docs
 - GitHub
 

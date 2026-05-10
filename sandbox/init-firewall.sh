@@ -26,6 +26,9 @@ ALLOWED_DOMAINS=(
     "registry.yarnpkg.com"
     "nodejs.org"
 
+    # Dart / Flutter
+    "pub.dev"
+
     # Rust
     "crates.io"
     "static.crates.io"
