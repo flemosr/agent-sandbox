@@ -9,7 +9,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 RUN_SANDBOX = REPO_ROOT / "scripts" / "run_sandbox.sh"
 
 
-class RunSandboxEnvTests(unittest.TestCase):
+class RunSandboxLauncherTests(unittest.TestCase):
     def run_with_fake_docker(self, workspace: Path, env_file: str | None = None) -> str:
         fake_bin = workspace / "bin"
         fake_bin.mkdir()
