@@ -31,12 +31,13 @@ RUN apt-get update && apt-get install -y \
     strace \
     gnupg \
     postgresql-client \
-    protobuf-compiler \
     && rm -rf /var/lib/apt/lists/*
 
-# Install yq
+ARG YQ_VERSION=4.53.2
 RUN ARCH=$(dpkg --print-architecture) && \
-    curl -fsSL "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${ARCH}" -o /usr/local/bin/yq && \
+    curl --http1.1 --retry 5 --retry-delay 5 --retry-all-errors -fsSL \
+        "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_${ARCH}" \
+        -o /usr/local/bin/yq && \
     chmod +x /usr/local/bin/yq
 
 RUN useradd -m -s /bin/bash agent \
@@ -47,7 +48,6 @@ RUN useradd -m -s /bin/bash agent \
 # The late /opt/flutter-sdk alias gives runtime code a stable path without
 # invalidating this expensive layer when the persistence wiring changes.
 # amd64: official tarball; arm64: git clone (no prebuilt arm64 Linux tarball available).
-# First in the file so only a FLUTTER_VERSION bump invalidates this layer.
 ARG FLUTTER_VERSION=3.41.9
 RUN ARCH=$(dpkg --print-architecture) && \
     if [ "$ARCH" = "amd64" ]; then \
@@ -83,13 +83,6 @@ ENV FLUTTER_CLI_ANALYTICS_DISABLED=1
 RUN /opt/flutter-sdk-template/bin/flutter precache \
         --no-android --no-ios --no-fuchsia --no-macos --no-windows --no-web
 
-# Install Dart protobuf generator into a seedable pub cache template.
-ARG PROTOC_PLUGIN_VERSION=25.0.0
-RUN PUB_CACHE=/opt/pub-cache-template \
-    /opt/flutter-sdk-template/bin/dart pub global activate protoc_plugin "${PROTOC_PLUGIN_VERSION}" \
-    && ln -sf /opt/pub-cache-template /home/agent/.pub-cache \
-    && ln -sf /home/agent/.pub-cache/bin/protoc-gen-dart /home/agent/.local/bin/protoc-gen-dart
-
 # Install Rust stable directly into /opt/ templates; symlink home dirs so the
 # build-time PATH (/home/agent/.cargo/bin) resolves correctly.
 ENV RUSTUP_HOME=/opt/rustup-template
@@ -97,14 +90,6 @@ ENV CARGO_HOME=/opt/cargo-template
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable \
     && ln -sf /opt/rustup-template /home/agent/.rustup \
     && ln -sf /opt/cargo-template /home/agent/.cargo
-
-# Install Rust protobuf generator as an image-baked global binary.
-ARG PROTOC_GEN_PROST_VERSION=0.5.0
-RUN PATH="/home/agent/.cargo/bin:${PATH}" \
-    /home/agent/.cargo/bin/cargo install \
-        --root /home/agent/.local \
-        --version "${PROTOC_GEN_PROST_VERSION}" \
-        protoc-gen-prost
 
 # Install nvm and Node.js LTS directly into /opt/nvm-template; symlink home dir so
 # $NVM_DIR (/home/agent/.nvm) resolves correctly during the build.
@@ -142,17 +127,28 @@ ENV PATH="/home/agent/.local/python-venv/bin:/home/agent/.local/bin:/home/agent/
 RUN python3 -m venv ~/.local/python-venv && \
     ~/.local/python-venv/bin/pip install playwright pyright ruff matplotlib numpy
 
-# Set up home→/opt/ symlink for opencode before running the installer.
-RUN ln -sf /opt/opencode-template /home/agent/.opencode
-
 # Install opencode. Placed after the Python venv to preserve that heavier layer's cache.
-# The installer drops the binary at ~/.opencode/bin/opencode; symlink into ~/.local/bin.
-RUN curl -fsSL https://opencode.ai/install | bash \
-    && ln -sf /home/agent/.opencode/bin/opencode /home/agent/.local/bin/opencode
+# Download a pinned release asset directly; the upstream installer queries the
+# GitHub API for latest-version metadata and can fail with unauthenticated 403s.
+ARG OPENCODE_VERSION=1.15.0
+RUN ARCH=$(dpkg --print-architecture) && \
+    case "$ARCH" in \
+        amd64) OPENCODE_ARCH="x64" ;; \
+        arm64) OPENCODE_ARCH="arm64" ;; \
+        *) echo "Unsupported architecture for opencode: $ARCH" >&2; exit 1 ;; \
+    esac && \
+    curl --http1.1 --retry 5 --retry-delay 5 --retry-all-errors -fsSL \
+        "https://github.com/anomalyco/opencode/releases/download/v${OPENCODE_VERSION}/opencode-linux-${OPENCODE_ARCH}.tar.gz" \
+        -o /tmp/opencode.tar.gz && \
+    tar -xzf /tmp/opencode.tar.gz -C /tmp opencode && \
+    mkdir -p /opt/opencode-template/bin && \
+    install -m 0755 /tmp/opencode /opt/opencode-template/bin/opencode && \
+    ln -sf /opt/opencode-template /home/agent/.opencode && \
+    ln -sf /home/agent/.opencode/bin/opencode /home/agent/.local/bin/opencode && \
+    rm -f /tmp/opencode.tar.gz /tmp/opencode
 
-# Install Codex. ADD fetches the releases API as the layer cache key so docker
-# compose build picks up new releases automatically without --no-cache.
-ADD --chown=agent:agent https://api.github.com/repos/openai/codex/releases/latest /tmp/codex-release.json
+# Install Codex. Keep this as a normal curl download because BuildKit remote ADD
+# to the GitHub API can fail with unauthenticated 403 responses.
 RUN ARCH=$(dpkg --print-architecture) && \
     case "$ARCH" in \
         amd64) CODEX_ARCH="x86_64-unknown-linux-musl" ;; \
@@ -164,7 +160,7 @@ RUN ARCH=$(dpkg --print-architecture) && \
         -o /tmp/codex.tar.gz && \
     tar -xzf /tmp/codex.tar.gz -C /tmp && \
     install -m 0755 "/tmp/codex-${CODEX_ARCH}" /home/agent/.local/bin/codex && \
-    rm -f /tmp/codex.tar.gz /tmp/codex-release.json "/tmp/codex-${CODEX_ARCH}"
+    rm -f /tmp/codex.tar.gz "/tmp/codex-${CODEX_ARCH}"
 
 # Persist Codex data. Codex creates ~/.codex on first use; bake in the symlink
 # so it points to the volume before the entrypoint runs.
@@ -210,20 +206,24 @@ RUN ln -sfn /opt/flutter-sdk-template /opt/flutter-sdk \
                        /home/agent/.local/bin/opencode \
                        /home/agent/.local/bin/protoc-gen-dart
 
-# Final runtime PATH: wrappers first, image-owned Flutter SDK next, persisted
-# nvm/cargo toolchains after that.
-ENV PATH="/home/agent/.local/python-venv/bin:/home/agent/.local/bin:/opt/flutter-sdk/bin:/home/agent/.nvm/current/bin:/home/agent/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-
-# Install release-binary protobuf CLIs late so version bumps do not invalidate
-# expensive Flutter, Rust, Node, Python, or agent install layers.
+# Install release-binary protobuf CLIs and generators late so version bumps do
+# not invalidate expensive Flutter, Rust, Node, Python, or agent install layers.
+ARG PROTOC_VERSION=34.1
 ARG BUF_VERSION=1.69.0
 ARG GRPCURL_VERSION=1.9.3
 RUN ARCH=$(dpkg --print-architecture) && \
     case "$ARCH" in \
-        amd64) BUF_ARCH="x86_64"; GRPCURL_ARCH="x86_64" ;; \
-        arm64) BUF_ARCH="aarch64"; GRPCURL_ARCH="arm64" ;; \
+        amd64) PROTOC_ARCH="x86_64"; BUF_ARCH="x86_64"; GRPCURL_ARCH="x86_64" ;; \
+        arm64) PROTOC_ARCH="aarch_64"; BUF_ARCH="aarch64"; GRPCURL_ARCH="arm64" ;; \
         *) echo "Unsupported architecture for protobuf tooling: $ARCH" >&2; exit 1 ;; \
     esac && \
+    curl --http1.1 --retry 5 --retry-delay 5 --retry-all-errors -fsSL \
+        "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-${PROTOC_ARCH}.zip" \
+        -o /tmp/protoc.zip && \
+    mkdir -p /tmp/protoc /usr/local/include && \
+    unzip -q /tmp/protoc.zip -d /tmp/protoc && \
+    install -m 0755 /tmp/protoc/bin/protoc /usr/local/bin/protoc && \
+    cp -a /tmp/protoc/include/. /usr/local/include/ && \
     curl --http1.1 --retry 5 --retry-delay 5 --retry-all-errors -fsSL \
         "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/buf-Linux-${BUF_ARCH}" \
         -o /usr/local/bin/buf && \
@@ -233,7 +233,44 @@ RUN ARCH=$(dpkg --print-architecture) && \
         -o /tmp/grpcurl.tar.gz && \
     tar -xzf /tmp/grpcurl.tar.gz -C /tmp grpcurl && \
     install -m 0755 /tmp/grpcurl /usr/local/bin/grpcurl && \
-    rm -f /tmp/grpcurl.tar.gz /tmp/grpcurl
+    rm -rf /tmp/protoc /tmp/protoc.zip /tmp/grpcurl.tar.gz /tmp/grpcurl
+
+USER agent
+ARG PROTOC_PLUGIN_VERSION=25.0.0
+RUN PUB_CACHE=/opt/pub-cache-template \
+    /opt/flutter-sdk-template/bin/dart pub global activate protoc_plugin "${PROTOC_PLUGIN_VERSION}" \
+    && ln -sf /opt/pub-cache-template /home/agent/.pub-cache \
+    && ln -sf /home/agent/.pub-cache/bin/protoc-gen-dart /home/agent/.local/bin/protoc-gen-dart
+
+ARG PROTOC_GEN_PROST_VERSION=0.5.0
+RUN PATH="/home/agent/.cargo/bin:${PATH}" \
+    /home/agent/.cargo/bin/cargo install \
+        --root /home/agent/.local \
+        --version "${PROTOC_GEN_PROST_VERSION}" \
+        protoc-gen-prost
+
+USER root
+
+# Make nvm available in non-interactive bash shells used by coding agents.
+# ~/.bashrc only loads nvm for interactive shells; bash sources $BASH_ENV for
+# non-interactive commands such as `bash -c "node --version"`.
+RUN cat > /etc/profile.d/workcell-nvm.sh <<'EOF' && chmod 0644 /etc/profile.d/workcell-nvm.sh
+export NVM_DIR="${NVM_DIR:-/home/agent/.nvm}"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  . "$NVM_DIR/nvm.sh"
+fi
+if [ -d "$NVM_DIR/current/bin" ]; then
+  case ":$PATH:" in
+    *":$NVM_DIR/current/bin:"*) ;;
+    *) export PATH="$NVM_DIR/current/bin:$PATH" ;;
+  esac
+fi
+EOF
+
+# Final runtime PATH: wrappers first, image-owned Flutter SDK next, persisted
+# nvm/cargo toolchains after that.
+ENV PATH="/home/agent/.local/python-venv/bin:/home/agent/.local/bin:/opt/flutter-sdk/bin:/home/agent/.nvm/current/bin:/home/agent/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ENV BASH_ENV="/etc/profile.d/workcell-nvm.sh"
 
 COPY init-firewall.sh /opt/init-firewall.sh
 COPY entrypoint.sh /opt/entrypoint.sh
